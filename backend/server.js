@@ -73,6 +73,28 @@ app.post("/upload", upload.single("apk"), (req, res) => {
     }
 });
 
+// Route to get the latest APK of an app
+app.get("/download/:appName", (req, res) => {
+    const { appName } = req.params;
+
+    db.get(
+        `SELECT file_path FROM version 
+         WHERE app_id = (SELECT id FROM app WHERE name = ?) 
+         ORDER BY version DESC LIMIT 1`,
+        [appName],
+        (err, row) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            if (!row) {
+                return res.status(404).json({ error: "App not found or no version available." });
+            }
+
+            const filePath = path.join(__dirname, "uploads", row.file_path);
+            res.download(filePath); // Send the APK file
+        }
+    );
+});
 
 // Start server
 app.listen(port, () => {
