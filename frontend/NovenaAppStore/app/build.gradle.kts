@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.novenaappstore"
-    compileSdk = 33
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.novenaappstore"
