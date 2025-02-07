@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+//    id("kotlin-kapt")
+//    id("com.google.dagger.hilt.android") version "2.41"
 }
 
 android {
@@ -36,8 +38,13 @@ android {
     }
     buildFeatures {
         compose = true
+        viewBinding = true
     }
 }
+
+//kapt {
+//    correctErrorTypes = true
+//}
 
 dependencies {
 
@@ -49,10 +56,19 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.navigation:navigation-compose:2.8.6")
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0") // Gson converter
-    implementation("com.squareup.okhttp3:okhttp:4.9.0") // OkHttp for file downloads
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson) // Gson converter
+    implementation(libs.okhttp) // OkHttp for file downloads
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx.v220)
+    implementation(libs.coil.compose)
+//    implementation(libs.androidx.hilt.lifecycle.viewmodel)
+//    implementation(libs.hilt.android)
+//    kapt(libs.hilt.android.compiler)
+    implementation(libs.androidx.runtime.livedata)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

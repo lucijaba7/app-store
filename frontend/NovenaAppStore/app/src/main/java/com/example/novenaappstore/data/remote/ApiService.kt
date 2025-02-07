@@ -7,9 +7,6 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface ApiService {
-    @GET("apps/{id}")
-    suspend fun getApp(@Path("id") appId: Int): App
-
-    @GET("download/{appName}")
-    suspend fun downloadApk(@Path("appName") appName: String): Response<ResponseBody>
+    @GET("/apps")
+    suspend fun getApps(): Response<List<App>>
 }

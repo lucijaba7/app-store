@@ -9,68 +9,128 @@ const port = 3000;
 // Initialize database
 const db = require("./db");
 
-// Set up storage for uploaded APK files
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/"); // Save files in "uploads" folder
-    },
+// Serve static files (e.g., app icons) from the 'uploads' folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Configure storage for APK files
+const apkStorage = multer.diskStorage({
+    destination: "./uploads/apks/",
     filename: (req, file, cb) => {
-        const uniqueName = file.originalname;
-        cb(null, uniqueName);
-    },
+        cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
+    }
 });
 
-const upload = multer({ storage });
-
-// Ensure "uploads" folder exists
-const fs = require("fs");
-if (!fs.existsSync("uploads")) {
-    fs.mkdirSync("uploads");
-}
-
-// Route to upload an APK and save metadata in database
-app.post("/upload", upload.single("apk"), (req, res) => {
-    const { name, version } = req.body;
-
-    if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded!" });
+// Configure storage for app icons
+const iconStorage = multer.diskStorage({
+    destination: "./uploads/icons/",
+    filename: (req, file, cb) => {
+        cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
     }
+});
 
-    const apkFilePath = req.file.filename; // Store filename, not full path
-
-    // Check if the app already exists
-    db.get(`SELECT id FROM app WHERE name = ?`, [name], (err, row) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+// Multer setup to handle both APK and icon files
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            if (file.fieldname === "apk") {
+                cb(null, "./uploads/apks/");
+            } else if (file.fieldname === "icon") {
+                cb(null, "./uploads/icons/");
+            }
+        },
+        filename: (req, file, cb) => {
+            cb(null, file.originalname);
         }
+    })
+});
 
-        if (row) {
-            // App exists, use its ID
-            insertVersion(row.id);
-        } else {
-            // App doesn't exist, create it
-            db.run(`INSERT INTO app (name) VALUES (?)`, [name], function (err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                insertVersion(this.lastID); // Insert version with new app ID
-            });
-        }
-    });
+// Ensure upload directories exist
+const fs = require("fs");
+if (!fs.existsSync("./uploads/apks")) fs.mkdirSync("./uploads/apks", { recursive: true });
+if (!fs.existsSync("./uploads/icons")) fs.mkdirSync("./uploads/icons", { recursive: true });
 
-    // Function to insert the new version
-    function insertVersion(app_id) {
+/** 
+ * 🚀 Route: Upload a New App (with First APK Version)
+ */
+app.post("/upload", upload.fields([{ name: "apk", maxCount: 1 }, { name: "icon", maxCount: 1 }]), (req, res) => {
+    const { name, version } = req.body;
+    if (!name || !version) return res.status(400).json({ error: "App name and version are required." });
+
+    const iconFile = req.files["icon"] ? req.files["icon"][0].path : null;
+    const apkFile = req.files["apk"] ? req.files["apk"][0].path : null;
+
+    if (!iconFile || !apkFile) return res.status(400).json({ error: "Both APK and icon must be uploaded." });
+
+    // Insert new app and then insert the first version
+    db.run(`INSERT INTO app (name, icon_path) VALUES (?, ?)`, [name, iconFile], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const appId = this.lastID; // Get the newly created app's ID
+
         db.run(
-            `INSERT INTO version (app_id, version, file_path) VALUES (?, ?, ?)`,
-            [app_id, version, apkFilePath],
+            `INSERT INTO version (app_id, version, file_path, uploaded_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+            [appId, version, apkFile],
             function (err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json({ message: "Uploaded successfully!", version_id: this.lastID });
+                if (err) return res.status(500).json({ error: err.message });
+
+                res.json({
+                    message: "App and first version uploaded successfully!",
+                    app_id: appId,
+                    version_id: this.lastID,
+                    version: version
+                });
             }
         );
-    }
+    });
+});
+
+/** 
+ * 🚀 Route 2: Update App Version (with APK)
+ * Adds a new version to an existing app.
+ */
+app.post("/updateVersion", upload.single("apk"), (req, res) => {
+    const { app_id, version } = req.body;
+    if (!app_id || !version) return res.status(400).json({ error: "App ID and version are required." });
+
+    const apkFile = req.file ? req.file.path : null;
+    if (!apkFile) return res.status(400).json({ error: "APK file is required." });
+
+    // Insert new version
+    db.run(
+        `INSERT INTO version (app_id, version, file_path, uploaded_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+        [app_id, version, apkFile],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Version updated successfully!", version_id: this.lastID, version: version });
+        }
+    );
+});
+
+app.get("/apps", (req, res) => {
+    const sql = `
+        SELECT app.id, app.name, app.icon_path, v.version
+        FROM app
+        LEFT JOIN version v ON app.id = v.app_id
+        WHERE v.uploaded_at = (
+            SELECT MAX(uploaded_at) FROM version WHERE version.app_id = app.id
+        )
+    `;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        // Dynamically get the base URL (protocol + host + port)
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        // Modify the file paths to be dynamic URLs
+        const result = rows.map(row => ({
+            id: row.id,
+            name: row.name,
+            appIcon: `${baseUrl}/uploads/icons/${path.basename(row.icon_path)}`,  // Dynamic URL for app icon
+            version: row.version,
+        }));
+
+        res.json(result); // Return app list with latest version info
+    });
 });
 
 // Route to get the latest APK of an app

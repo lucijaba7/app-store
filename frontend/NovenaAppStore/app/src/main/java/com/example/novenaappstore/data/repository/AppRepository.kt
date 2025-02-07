@@ -14,10 +14,11 @@ class AppRepository(private val context: Context) {
 
     private val api = RetrofitInstance.api
 
-    suspend fun getApp(appId: Int): App {
-        return api.getApp(appId)
+    suspend fun getApp(): Response<List<App>> {
+        return api.getApps()
     }
 
+    /*
     // Function to download APK
     suspend fun downloadApkFile(appName: String) {
         val response = api.downloadApk(appName)
@@ -49,4 +50,6 @@ class AppRepository(private val context: Context) {
             Log.e("Download", "Error saving file", e)
         }
     }
+
+     */
 }
