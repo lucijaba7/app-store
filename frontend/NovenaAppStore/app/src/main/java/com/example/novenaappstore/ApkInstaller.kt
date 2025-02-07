@@ -52,11 +52,12 @@ object ApkInstaller {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION,
-                Uri.parse("package:${context.packageName}")
-            )
-            context.startActivity(intent)
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                )
+                context.startActivity(intent)
+            }
         }
     }
 }
