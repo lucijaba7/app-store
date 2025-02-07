@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
-import androidx.compose.runtime.snapshots.SnapshotApplyResult
 import androidx.core.content.FileProvider
 import java.io.File
 
@@ -35,8 +34,7 @@ object ApkInstaller {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
             context.startActivity(intent)
-
-            Log.e("success", "Install success")
+            
         } catch (e: Exception) {
             Log.e("ApkInstaller", "Installation failed: ${e.message}")
         }
@@ -51,6 +49,14 @@ object ApkInstaller {
                 )
                 context.startActivity(intent)
             }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION,
+                Uri.parse("package:${context.packageName}")
+            )
+            context.startActivity(intent)
         }
     }
 }

@@ -10,8 +10,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.novenaappstore"
-        minSdk = 33
-        targetSdk = 33
+        minSdk = 32
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
