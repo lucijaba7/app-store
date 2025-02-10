@@ -102,16 +102,16 @@ fun AppItem(app: App) {
                     .fillMaxWidth(0.2f)
                     .aspectRatio(1f)
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(app.appIcon)
-                        .crossfade(true)
-                        .build(),
-                    placeholder = painterResource(R.drawable.ic_launcher_foreground),
-                    contentDescription = "App icon",
-                    contentScale = ContentScale.Inside,
-                    modifier = Modifier.clip(CircleShape),
-                )
+//                AsyncImage(
+//                    model = ImageRequest.Builder(LocalContext.current)
+//                        .data(app.appIcon)
+//                        .crossfade(true)
+//                        .build(),
+//                    placeholder = painterResource(R.drawable.ic_launcher_foreground),
+//                    contentDescription = "App icon",
+//                    contentScale = ContentScale.Inside,
+//                    modifier = Modifier.clip(CircleShape),
+//                )
             }
             Column(
                 modifier = Modifier
@@ -119,7 +119,7 @@ fun AppItem(app: App) {
                     .padding(horizontal = 12.dp),
             ) {
                 Text(
-                    app.name,
+                    app.file_name,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -138,7 +138,7 @@ fun AppItem(app: App) {
                 onClick = {
                     Log.e("Install", "Install app");
                     ApkInstaller.requestInstallPermission(context)
-                    ApkInstaller.installApk(context)
+                    ApkInstaller.installApk(context, app.file_name)
                 },
                 modifier = Modifier
                     .wrapContentSize()  // Ensures it doesn't take extra space

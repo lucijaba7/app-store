@@ -11,11 +11,11 @@ import androidx.core.content.FileProvider
 import java.io.File
 
 object ApkInstaller {
-    fun installApk(context: Context) {
+    fun installApk(context: Context, fileName: String) {
         try {
             val file = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "Prepoznaj_tragove_ar.apk"
+                fileName
             )
 
             if (!file.exists()) {

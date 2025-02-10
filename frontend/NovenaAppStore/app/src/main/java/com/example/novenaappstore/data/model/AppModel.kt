@@ -2,7 +2,7 @@ package com.example.novenaappstore.data.model
 
 data class App(
     val id: Int,
-    val name: String,
-    val appIcon: String,
+    val file_name: String,
     val version: String,
+    val package_name: String,
 )

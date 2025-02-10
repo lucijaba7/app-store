@@ -90,7 +90,7 @@ app.get("/apps", (req, res) => {
             id: row.id,
             file_name: row.file_path.split("\\").pop(), // Extract file name from path
             version: row.version,
-            package: row.package_name
+            package_name: row.package_name
         }));
 
         res.json(apps);
