@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx.v220)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.swiperefreshlayout)
 //    implementation(libs.androidx.hilt.lifecycle.viewmodel)
 //    implementation(libs.hilt.android)
 //    kapt(libs.hilt.android.compiler)

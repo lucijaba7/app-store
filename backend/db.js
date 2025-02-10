@@ -20,9 +20,11 @@ db.serialize(() => {
     // Apps table (stores apps and file paths)
     db.run(`CREATE TABLE IF NOT EXISTS app (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT NOT NULL,
+        app_name TEXT NOT NULL,
+        file_name TEXT NOT NULL,
         version TEXT NOT NULL,
-        package_name TEXT NOT NULL
+        package_name TEXT NOT NULL,
+        icon BLOB NOT NULL
     )`);
 
     // User-App Access table (tracks which user has access to which app)

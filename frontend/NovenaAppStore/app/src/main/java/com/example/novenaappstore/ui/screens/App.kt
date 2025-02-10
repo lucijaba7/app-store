@@ -1,9 +1,11 @@
 package com.example.novenaappstore
 
 import android.content.Context
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,10 +23,10 @@ fun App() {
     val appRepo = AppRepository(context)
     val navController = rememberNavController()
 
-    val storeVieModel = StoreViewModel(appRepo)
+    val storeVieModel = StoreViewModel(context, appRepo)
 
     NovenaAppStoreTheme {  // Apply your custom theme
-        Surface(color = MaterialTheme.colorScheme.background) {
+        Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
             NavHost(navController = navController, startDestination = "store") {
                 composable("auth") { AuthScreen(navController) }
                 composable("store") { StoreScreen(storeVieModel) }
