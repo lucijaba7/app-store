@@ -9,151 +9,92 @@ const port = 3000;
 // Initialize database
 const db = require("./db");
 
-// Serve static files (e.g., app icons) from the 'uploads' folder
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Configure storage for APK files
-const apkStorage = multer.diskStorage({
-    destination: "./uploads/apks/",
+// Set up storage for uploaded APK files
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "uploads/"); // Save files in "uploads" folder
+    },
     filename: (req, file, cb) => {
-        cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
-    }
+        const uniqueName = file.originalname;
+        cb(null, uniqueName);
+    },
 });
 
-// Configure storage for app icons
-const iconStorage = multer.diskStorage({
-    destination: "./uploads/icons/",
-    filename: (req, file, cb) => {
-        cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
-    }
-});
+const upload = multer({ storage });
 
-// Multer setup to handle both APK and icon files
-const upload = multer({
-    storage: multer.diskStorage({
-        destination: (req, file, cb) => {
-            if (file.fieldname === "apk") {
-                cb(null, "./uploads/apks/");
-            } else if (file.fieldname === "icon") {
-                cb(null, "./uploads/icons/");
-            }
-        },
-        filename: (req, file, cb) => {
-            cb(null, file.originalname);
-        }
-    })
-});
-
-// Ensure upload directories exist
+// Ensure "uploads" folder exists
 const fs = require("fs");
-if (!fs.existsSync("./uploads/apks")) fs.mkdirSync("./uploads/apks", { recursive: true });
-if (!fs.existsSync("./uploads/icons")) fs.mkdirSync("./uploads/icons", { recursive: true });
+if (!fs.existsSync("uploads")) {
+    fs.mkdirSync("uploads");
+}
 
-/** 
- * 🚀 Route: Upload a New App (with First APK Version)
- */
-app.post("/upload", upload.fields([{ name: "apk", maxCount: 1 }, { name: "icon", maxCount: 1 }]), (req, res) => {
-    const { name, version } = req.body;
-    if (!name || !version) return res.status(400).json({ error: "App name and version are required." });
+const ApkReader = require("node-apk-parser"); // Import APK parser
 
-    const iconFile = req.files["icon"] ? req.files["icon"][0].path : null;
-    const apkFile = req.files["apk"] ? req.files["apk"][0].path : null;
+app.post("/upload", upload.single("file"), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+    }
 
-    if (!iconFile || !apkFile) return res.status(400).json({ error: "Both APK and icon must be uploaded." });
+    const fileName = req.file.filename;
+    const filePath = req.file.path;
 
-    // Insert new app and then insert the first version
-    db.run(`INSERT INTO app (name, icon_path) VALUES (?, ?)`, [name, iconFile], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        // Read APK metadata
+        const reader = new ApkReader(filePath);
+        const manifest = reader.readManifestSync();
 
-        const appId = this.lastID; // Get the newly created app's ID
+        const version = manifest.versionName; // Extract version name
+        const packageName = manifest.package; // Extract package name
 
-        db.run(
-            `INSERT INTO version (app_id, version, file_path, uploaded_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
-            [appId, version, apkFile],
-            function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-
-                res.json({
-                    message: "App and first version uploaded successfully!",
-                    app_id: appId,
-                    version_id: this.lastID,
-                    version: version
-                });
-            }
-        );
-    });
-});
-
-/** 
- * 🚀 Route 2: Update App Version (with APK)
- * Adds a new version to an existing app.
- */
-app.post("/updateVersion", upload.single("apk"), (req, res) => {
-    const { app_id, version } = req.body;
-    if (!app_id || !version) return res.status(400).json({ error: "App ID and version are required." });
-
-    const apkFile = req.file ? req.file.path : null;
-    if (!apkFile) return res.status(400).json({ error: "APK file is required." });
-
-    // Insert new version
-    db.run(
-        `INSERT INTO version (app_id, version, file_path, uploaded_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
-        [app_id, version, apkFile],
-        function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Version updated successfully!", version_id: this.lastID, version: version });
-        }
-    );
-});
-
-app.get("/apps", (req, res) => {
-    const sql = `
-        SELECT app.id, app.name, app.icon_path, v.version
-        FROM app
-        LEFT JOIN version v ON app.id = v.app_id
-        WHERE v.uploaded_at = (
-            SELECT MAX(uploaded_at) FROM version WHERE version.app_id = app.id
-        )
-    `;
-
-    db.all(sql, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        // Dynamically get the base URL (protocol + host + port)
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
-        // Modify the file paths to be dynamic URLs
-        const result = rows.map(row => ({
-            id: row.id,
-            name: row.name,
-            appIcon: `${baseUrl}/uploads/icons/${path.basename(row.icon_path)}`,  // Dynamic URL for app icon
-            version: row.version,
-        }));
-
-        res.json(result); // Return app list with latest version info
-    });
-});
-
-// Route to get the latest APK of an app
-app.get("/download/:appName", (req, res) => {
-    const { appName } = req.params;
-
-    db.get(
-        `SELECT file_path FROM version 
-         WHERE app_id = (SELECT id FROM app WHERE name = ?) 
-         ORDER BY version DESC LIMIT 1`,
-        [appName],
-        (err, row) => {
+        // Check if an app with the same package name already exists
+        db.get(`SELECT id FROM app WHERE package_name = ?`, [packageName], (err, row) => {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
-            if (!row) {
-                return res.status(404).json({ error: "App not found or no version available." });
+
+            if (row) {
+                return res.status(400).json({ error: "App already exists with this package name" });
             }
 
-            const filePath = path.join(__dirname, "uploads", row.file_path);
-            res.download(filePath); // Send the APK file
+            // Insert file details into the database
+            db.run(
+                `INSERT INTO app (file_path, version, package_name) VALUES (?, ?, ?)`,
+                [filePath, version, packageName],
+                function (err) {
+                    if (err) {
+                        return res.status(500).json({ error: err.message });
+                    }
+                    res.json({
+                        message: "File uploaded successfully",
+                        appId: this.lastID,
+                        version: version,
+                        package: packageName
+                    });
+                }
+            );
+        });
+
+    } catch (error) {
+        return res.status(500).json({ error: "Failed to read APK metadata" });
+    }
+});
+
+app.get("/apps", (req, res) => {
+    db.all(`SELECT id, file_path, version, package_name FROM app`, [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
         }
-    );
+
+        // Convert file paths to just file names
+        const apps = rows.map(row => ({
+            id: row.id,
+            file_name: row.file_path.split("\\").pop(), // Extract file name from path
+            version: row.version,
+            package: row.package_name
+        }));
+
+        res.json(apps);
+    });
 });
 
 // Start server
