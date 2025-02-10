@@ -101,3 +101,11 @@ app.get("/apps", (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
+
+app.get("/download/:filename", (req, res) => { const fileName = req.params.filename; const filePath = path.join(__dirname, "uploads", fileName); // Build the full path to the file
+// Check if the file exists
+ fs.stat(filePath, (err, stats) => { 
+    if (err) { return res.status(404).json({ error: "File not found" }); 
+} 
+// Send the file for download 
+res.sendFile(filePath, (err) => { if (err) { return res.status(500).json({ error: "Failed to send file" }); } }); }); });
