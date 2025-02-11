@@ -1,6 +1,7 @@
 package com.example.novenaappstore.ui.screens.store
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -11,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -46,6 +49,9 @@ import com.example.novenaappstore.ui.theme.PoppinsFontFamily
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.window.Dialog
 import com.example.novenaappstore.FileDownloader
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
@@ -84,6 +90,9 @@ fun StoreScreen(viewModel: StoreViewModel) {
 @SuppressLint("QueryPermissionsNeeded")
 @Composable
 fun AppItem(appWithState: AppWithState) {
+    val context = LocalContext.current
+    val isLoading = remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .height(100.dp)
@@ -124,13 +133,17 @@ fun AppItem(appWithState: AppWithState) {
                 )
             }
 
-
-            val context = LocalContext.current
             Button(
                 onClick = {
                     when (appWithState.state) {
                         AppState.NOT_INSTALLED -> {
-                            FileDownloader.downloadFile(context, RetrofitInstance.getBaseUrl() + "download/" + appWithState.app.fileName)
+
+                            isLoading.value = true // Show loading
+                            FileDownloader.downloadFile(
+                                context,
+                                RetrofitInstance.getBaseUrl() + "download/" + appWithState.app.fileName,
+                                isLoading
+                            )
                         }
                         AppState.OUTDATED -> {
                             // Handle update action (e.g., re-install or update)
@@ -161,6 +174,27 @@ fun AppItem(appWithState: AppWithState) {
                 )
             }
 
+        }
+    }
+    // Show loading dialog while downloading
+    LoadingDialog(isVisible = isLoading.value)
+}
+
+@Composable
+fun LoadingDialog(isVisible: Boolean) {
+    if (isVisible) {
+        Dialog(onDismissRequest = {}) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(
+                        color = if (isSystemInDarkTheme()) Color.DarkGray else Color.White,
+                        shape = MaterialTheme.shapes.medium
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
     }
 }
@@ -208,6 +242,25 @@ fun SimpleInversePullRefresh(
             exit = fadeOut(animationSpec = tween(durationMillis = 300)) // Fade out effect
         ) {
             content() // Your main content composable
+        }
+    }
+
+    @Composable
+    fun LoadingDialog(isVisible: Boolean) {
+        if (isVisible) {
+            Dialog(onDismissRequest = {}) {
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .background(
+                            color = if (isSystemInDarkTheme()) Color.DarkGray else Color.White,
+                            shape = MaterialTheme.shapes.medium
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
     }
 }
