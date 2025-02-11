@@ -12,6 +12,7 @@ import java.io.File
 
 object ApkInstaller {
     fun installApk(context: Context, fileName: String) {
+        requestInstallPermission(context)
         try {
             val file = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),

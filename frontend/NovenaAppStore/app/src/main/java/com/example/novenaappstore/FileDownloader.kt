@@ -1,5 +1,6 @@
 package com.example.novenaappstore
 
+import android.content.Context
 import android.os.Environment
 import android.util.Log
 import com.example.novenaappstore.data.remote.RetrofitInstance
@@ -10,14 +11,14 @@ import retrofit2.Response
 import java.io.*
 
 object FileDownloader {
-    fun downloadFile(fileUrl: String) {
+    fun downloadFile(context: Context, fileUrl: String) {
         val service = RetrofitInstance.api
 
         service.downloadFile(fileUrl).enqueue(object : Callback<ResponseBody> {
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                 if (response.isSuccessful) {
                     response.body()?.let { body ->
-                        saveFile(body, fileUrl)
+                        saveFile(context, body, fileUrl)
                     }
                 } else {
                     Log.e("Download", "Failed: ${response.errorBody()?.string()}")
@@ -30,7 +31,7 @@ object FileDownloader {
         })
     }
 
-    fun saveFile(body: ResponseBody, fileUrl: String) {
+    fun saveFile(context : Context, body: ResponseBody, fileUrl: String) {
         try {
             val fileName = fileUrl.substringAfterLast("/")
             val filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/$fileName"
@@ -54,9 +55,11 @@ object FileDownloader {
             } finally {
                 inputStream?.close()
                 outputStream?.close()
+                ApkInstaller.installApk(context, fileName)
             }
         } catch (e: Exception) {
             Log.e("Download", "Error: ${e.message}")
         }
+
     }
 }

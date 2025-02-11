@@ -130,12 +130,7 @@ fun AppItem(appWithState: AppWithState) {
                 onClick = {
                     when (appWithState.state) {
                         AppState.NOT_INSTALLED -> {
-
-                            FileDownloader.downloadFile(RetrofitInstance.getBaseUrl() + "download/" + appWithState.app.fileName)
-
-//                            Log.e("Install", "Install app");
-//                            ApkInstaller.requestInstallPermission(context)
-//                            ApkInstaller.installApk(context, appWithState.app.fileName)
+                            FileDownloader.downloadFile(context, RetrofitInstance.getBaseUrl() + "download/" + appWithState.app.fileName)
                         }
                         AppState.OUTDATED -> {
                             // Handle update action (e.g., re-install or update)
