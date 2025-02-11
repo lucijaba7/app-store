@@ -1,5 +1,6 @@
 package com.example.novenaappstore.ui.screens.store
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -45,8 +46,10 @@ import com.example.novenaappstore.ui.theme.PoppinsFontFamily
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import com.example.novenaappstore.FileDownloader
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
+import com.example.novenaappstore.data.remote.RetrofitInstance
 
 @Composable
 fun StoreScreen(viewModel: StoreViewModel) {
@@ -78,6 +81,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
 }
 
 
+@SuppressLint("QueryPermissionsNeeded")
 @Composable
 fun AppItem(appWithState: AppWithState) {
     Card(
@@ -126,9 +130,12 @@ fun AppItem(appWithState: AppWithState) {
                 onClick = {
                     when (appWithState.state) {
                         AppState.NOT_INSTALLED -> {
-                            Log.e("Install", "Install app");
-                            ApkInstaller.requestInstallPermission(context)
-                            ApkInstaller.installApk(context, appWithState.app.fileName)
+
+                            FileDownloader.downloadFile(RetrofitInstance.getBaseUrl() + "download/" + appWithState.app.fileName)
+
+//                            Log.e("Install", "Install app");
+//                            ApkInstaller.requestInstallPermission(context)
+//                            ApkInstaller.installApk(context, appWithState.app.fileName)
                         }
                         AppState.OUTDATED -> {
                             // Handle update action (e.g., re-install or update)
