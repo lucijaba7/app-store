@@ -1,5 +1,7 @@
 package com.example.novenaappstore
 
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -12,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.novenaappstore.data.remote.ApiService
 import com.example.novenaappstore.data.repository.AppRepository
+import com.example.novenaappstore.receivers.MyDeviceAdminReceiver
 import com.example.novenaappstore.ui.screens.auth.AuthScreen
 import com.example.novenaappstore.ui.screens.store.StoreScreen
 import com.example.novenaappstore.ui.screens.store.StoreViewModel
@@ -24,6 +27,7 @@ fun App() {
     val navController = rememberNavController()
 
     val storeVieModel = StoreViewModel(context, appRepo)
+
 
     NovenaAppStoreTheme {  // Apply your custom theme
         Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {

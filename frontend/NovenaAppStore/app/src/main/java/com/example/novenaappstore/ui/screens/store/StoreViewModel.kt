@@ -19,6 +19,9 @@ import android.os.Environment.DIRECTORY_DOWNLOADS
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 class StoreViewModel(private val context: Context, private val repository: AppRepository) :
     ViewModel() {
@@ -31,11 +34,15 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
     private val _error = MutableLiveData<String?>(null) // Holds any error message
     val error: LiveData<String?> get() = _error
 
+    fun clearError() {
+        _error.value = null
+    }
+
     init {
         fetchApps() // Start fetching apps when ViewModel is initialized
     }
 
-    public fun fetchApps() {
+    fun fetchApps() {
         _loading.value = true // Set loading to true when the fetch starts
         _error.value = null // Clear any previous errors
 
@@ -43,22 +50,22 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
             delay(3000)
             try {
 
-                val response = repository.getApp() // Fetch apps from the repository
+                val installedPackages = context.packageManager.getInstalledPackages(0)
+                val response = repository.getApps() // Fetch apps from the repository
                 if (response.isSuccessful) {
                     val fetchedApps = response.body() ?: emptyList();
-                    getAllInstalledApps(context);
                     // Determine the state of each app
                     val appsWithState = fetchedApps.map { app ->
                         // Here, you would determine the state based on your criteria
-                        val state = when {
-                            !isAppInstalled(context, app.packageName) -> AppState.NOT_INSTALLED
-                            getAppVersion(
-                                context,
-                                app.packageName
-                            ) < app.version -> AppState.OUTDATED
+                        val installedApp =
+                            installedPackages.find { p -> p.packageName == app.packageName }
 
-                            else -> AppState.UP_TO_DATE
+                        val state = when {
+                            installedApp == null -> AppState.NOT_INSTALLED  // App is not installed
+                            installedApp.versionName != app.version -> AppState.OUTDATED  // Version is outdated
+                            else -> AppState.UP_TO_DATE  // Version is up to date
                         }
+
                         // Map the App to AppWithState
                         AppWithState(app = app, state = state)
                     }
@@ -77,23 +84,50 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
             }
         }
     }
-}
 
-fun isAppInstalled(context: Context, packageName: String): Boolean {
-    val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-    return intent != null
-}
+    // Download APK from backend
+    fun downloadApk(filename: String) {
+        _loading.value = true // Set loading to true when download starts
+        _error.value = null // Clear any previous errors
 
-fun getAppVersion(context: Context, packageName: String): String {
-    val packageInfo = context.packageManager.getPackageInfo(packageName, 0)
-    return packageInfo.versionName ?: "Unknown version"
-}
+        viewModelScope.launch {
+            try {
+                // Call the repository to download the APK
+                val response = repository.downloadApk(filename)
+                if (response.isSuccessful) {
+                    // If the download is successful, get the input stream
+                    val inputStream = response.body()?.byteStream()
 
-fun getAllInstalledApps(context: Context): List<String> {
-    val packageManager = context.packageManager
-    val installedPackages = packageManager.getInstalledPackages(0)
-    installedPackages.forEach { pkg ->
-        Log.d("InstalledApp", "Package: ${pkg.packageName}")
+                    // Save the file to device storage
+                    if (inputStream != null) {
+                        saveFileToStorage(inputStream, filename)
+                        _error.postValue("Download completed successfully.")
+                    } else {
+                        _error.postValue("Failed to download APK.")
+                    }
+                } else {
+                    _error.postValue("Failed to fetch the APK: ${response.message()}")
+                }
+            } catch (e: Exception) {
+                // Handle errors such as network failure
+                _error.postValue("An error occurred: ${e.message}")
+            } finally {
+                _loading.value = false // Set loading to false after download is done
+            }
+        }
     }
-    return installedPackages.map { it.packageName }
+
+    // Save the file to device storage
+    private fun saveFileToStorage(inputStream: InputStream, filename: String) {
+        val file = File(context.getExternalFilesDir(null), filename)
+        val outputStream = FileOutputStream(file)
+        val buffer = ByteArray(1024)
+        var bytesRead: Int
+        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            outputStream.write(buffer, 0, bytesRead)
+        }
+        outputStream.flush()
+        outputStream.close()
+        inputStream.close()
+    }
 }

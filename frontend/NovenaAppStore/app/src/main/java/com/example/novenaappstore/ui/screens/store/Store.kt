@@ -62,22 +62,26 @@ fun StoreScreen(viewModel: StoreViewModel) {
     val apps = viewModel.apps.observeAsState(emptyList()).value
     val loading = viewModel.loading.observeAsState(false).value
     val error = viewModel.error.observeAsState().value
+    val openAlertDialog = remember { mutableStateOf(false) }
+
+    // Show the error dialog when there is an error
+    ErrorDialog(
+        error = error,
+        onDismiss = { viewModel.clearError(); openAlertDialog.value = false })
 
 
     SimpleInversePullRefresh(viewModel) {
-
-        // If there's an error, show the error message
         error?.let {
-            Text(text = it, color = Color.Red)
+            openAlertDialog.value = true
         }
 
         // Display apps if successfully fetched
         if (apps.isNotEmpty()) {
-            LazyColumn {
+            LazyColumn  {
                 itemsIndexed(
                     apps
                 ) { _, app ->
-                    AppItem(app) // Display app name
+                    AppItem(app, viewModel) // Display app name
                 }
             }
         }
@@ -89,7 +93,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
 
 @SuppressLint("QueryPermissionsNeeded")
 @Composable
-fun AppItem(appWithState: AppWithState) {
+fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
     val context = LocalContext.current
     val isLoading = remember { mutableStateOf(false) }
 
@@ -145,11 +149,13 @@ fun AppItem(appWithState: AppWithState) {
                                 isLoading
                             )
                         }
+
                         AppState.OUTDATED -> {
                             // Handle update action (e.g., re-install or update)
                             Log.e("Update", "Update app")
 
                         }
+
                         AppState.UP_TO_DATE -> {
                             // Handle the open app action
                             Log.e("Open", "Open app")
@@ -262,5 +268,30 @@ fun SimpleInversePullRefresh(
                 }
             }
         }
+    }
+
+
+}
+
+@Composable
+fun ErrorDialog(error: String?, onDismiss: () -> Unit) {
+    if (error != null) {
+
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
+            title = {
+                Text(text = "Error", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(text = error)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onDismiss() }
+                ) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }

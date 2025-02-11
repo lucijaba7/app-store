@@ -14,4 +14,7 @@ interface ApiService {
 
     @GET()
     fun downloadFile(@Url fileUrl: String): Call<ResponseBody>
+
+    @GET("download/{filename}")
+    fun downloadApk(@Path("filename") filename: String): Response<ResponseBody>
 }

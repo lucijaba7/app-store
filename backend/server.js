@@ -104,8 +104,6 @@ app.listen(port, () => {
 });
 
 
-
-
 // Helpers
 async function extractAppInfo(filePath) {
     // Initialize Apk object with the file path

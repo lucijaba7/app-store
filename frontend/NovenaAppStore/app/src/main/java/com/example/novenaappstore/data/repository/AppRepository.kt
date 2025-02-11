@@ -14,8 +14,12 @@ class AppRepository(private val context: Context) {
 
     private val api = RetrofitInstance.api
 
-    suspend fun getApp(): Response<List<App>> {
+    suspend fun getApps(): Response<List<App>> {
         return api.getApps()
+    }
+
+    suspend fun downloadApk(filename: String): Response<ResponseBody> {
+        return api.downloadApk(filename)
     }
 
     /*
