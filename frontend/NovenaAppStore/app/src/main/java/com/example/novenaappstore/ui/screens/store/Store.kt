@@ -1,7 +1,6 @@
 package com.example.novenaappstore.ui.screens.store
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -43,8 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.novenaappstore.ApkInstaller
-import com.example.novenaappstore.data.model.App
 import com.example.novenaappstore.ui.theme.PoppinsFontFamily
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.*
@@ -52,10 +49,8 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Dialog
-import com.example.novenaappstore.FileDownloader
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
-import com.example.novenaappstore.data.remote.RetrofitInstance
 
 @Composable
 fun StoreScreen(viewModel: StoreViewModel) {
@@ -86,8 +81,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
             }
         }
 
-    };
-
+    }
 }
 
 
@@ -95,7 +89,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
 @Composable
 fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
     val context = LocalContext.current
-    val isLoading = remember { mutableStateOf(false) }
+    val isDownloading = viewModel.downloading.observeAsState(false).value
 
     Card(
         modifier = Modifier
@@ -141,12 +135,9 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                 onClick = {
                     when (appWithState.state) {
                         AppState.NOT_INSTALLED -> {
-
-                            isLoading.value = true // Show loading
-                            FileDownloader.downloadFile(
+                            viewModel.downloadFile(
                                 context,
-                                RetrofitInstance.getBaseUrl() + "download/" + appWithState.app.fileName,
-                                isLoading
+                                appWithState.app.fileName,
                             )
                         }
 
@@ -160,6 +151,8 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                             // Handle the open app action
                             Log.e("Open", "Open app")
                         }
+
+                        AppState.DOWNLOADING -> TODO()
                     }
                 },
                 modifier = Modifier
@@ -173,6 +166,7 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                         AppState.NOT_INSTALLED -> "Install"
                         AppState.OUTDATED -> "Update"
                         AppState.UP_TO_DATE -> "Open"
+                        AppState.DOWNLOADING -> TODO()
                     }.uppercase(),
                     fontFamily = PoppinsFontFamily,
                     fontWeight = FontWeight.Black,
@@ -183,7 +177,7 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
         }
     }
     // Show loading dialog while downloading
-    LoadingDialog(isVisible = isLoading.value)
+    LoadingDialog(isVisible = isDownloading)
 }
 
 @Composable

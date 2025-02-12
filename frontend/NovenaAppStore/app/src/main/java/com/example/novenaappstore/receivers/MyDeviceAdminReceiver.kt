@@ -11,16 +11,16 @@ import com.example.novenaappstore.MainActivity
 
 class MyDeviceAdminReceiver : DeviceAdminReceiver() {
 
-//    override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
-//        val manager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-//
-//        val componentName = ComponentName(context.applicationContext, MyDeviceAdminReceiver::class.java)
-//        manager.setProfileName(componentName, "Administrator")
-//
-//        val launch = Intent(context, MainActivity::class.java)
-//        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-//        context.startActivity(launch)
-//    }
+    override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
+        val manager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+
+        val componentName = ComponentName(context.applicationContext, MyDeviceAdminReceiver::class.java)
+        manager.setProfileName(componentName, "Administrator")
+
+        val launch = Intent(context, MainActivity::class.java)
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(launch)
+    }
 
     override fun onEnabled(context: Context, intent: Intent) {
         super.onEnabled(context, intent)

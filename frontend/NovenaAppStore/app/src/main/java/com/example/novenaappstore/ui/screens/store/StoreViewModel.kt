@@ -1,38 +1,41 @@
 package com.example.novenaappstore.ui.screens.store
 
 import android.content.Context
-import android.content.pm.PackageManager
+import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.novenaappstore.data.model.App
+import com.example.novenaappstore.ApkInstaller
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
+import com.example.novenaappstore.data.remote.RetrofitInstance
 import com.example.novenaappstore.data.repository.AppRepository
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import android.Manifest
-import android.app.Activity
-import android.os.Environment.DIRECTORY_DOWNLOADS
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import kotlinx.coroutines.withContext
+import okhttp3.ResponseBody
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
+import java.io.IOException
 
 class StoreViewModel(private val context: Context, private val repository: AppRepository) :
     ViewModel() {
     private val _apps = MutableLiveData<List<AppWithState>>(emptyList()) // Holds the list of apps
     val apps: LiveData<List<AppWithState>> get() = _apps
 
-    private val _loading = MutableLiveData<Boolean>(true) // Initially loading
+    private val _loading = MutableLiveData(true) // Initially loading
     val loading: LiveData<Boolean> get() = _loading
 
     private val _error = MutableLiveData<String?>(null) // Holds any error message
     val error: LiveData<String?> get() = _error
+
+    private val _downloading = MutableLiveData(false) // Download loading
+    val downloading: LiveData<Boolean> get() = _downloading
 
     fun clearError() {
         _error.value = null
@@ -52,7 +55,7 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
                 val installedPackages = context.packageManager.getInstalledPackages(0)
                 val response = repository.getApps() // Fetch apps from the repository
                 if (response.isSuccessful) {
-                    val fetchedApps = response.body() ?: emptyList();
+                    val fetchedApps = response.body() ?: emptyList()
                     // Determine the state of each app
                     val appsWithState = fetchedApps.map { app ->
                         // Here, you would determine the state based on your criteria
@@ -80,6 +83,66 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
                 _error.postValue("An error occurred: ${e.message}")
             } finally {
                 _loading.value = false // Set loading to false after fetching is done
+            }
+        }
+    }
+
+    public fun downloadFile(context: Context, fileUrl: String) {
+        val service = RetrofitInstance.api
+
+        // Show loading screen
+        _downloading.value = true
+
+        service.downloadFile(fileUrl).enqueue(object : Callback<ResponseBody> {
+            override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                if (response.isSuccessful) {
+                    response.body()?.let { body ->
+                        viewModelScope.launch (Dispatchers.IO) {
+                            saveFile(context, body, fileUrl)
+                        }
+                    }
+                } else {
+                    Log.e("Download", "Failed: ${response.errorBody()?.string()}")
+                    _downloading.value = false // Hide loading screen on failure
+                }
+            }
+
+            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                Log.e("Download", "Error: ${t.message}")
+                _downloading.value = false // Hide loading screen on failure
+            }
+        })
+    }
+
+    suspend fun saveFile(context : Context, body: ResponseBody, fileUrl: String) {
+        try {
+            val fileName = fileUrl.substringAfterLast("/")
+            val filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/$fileName"
+            val file = File(filePath)
+
+            body.byteStream().use { inputStream ->
+                FileOutputStream(file).use { outputStream ->
+                    val buffer = ByteArray(4096)
+                    var bytesRead: Int
+
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        outputStream.write(buffer, 0, bytesRead)
+                    }
+
+                    outputStream.flush()
+                    Log.d("Download", "File saved at: $filePath")
+                }
+            }
+
+            // Switch back to the main thread to update UI
+            withContext(Dispatchers.Main) {
+                _downloading.value = false // Hide loading screen
+                ApkInstaller.installApk(context, fileName) // Start installation
+            }
+        } catch (e: IOException) {
+            Log.e("Download", "File save error: ${e.message}")
+            withContext(Dispatchers.Main) {
+                _downloading.value = false
             }
         }
     }

@@ -41,7 +41,7 @@ object ApkInstaller {
         }
     }
 
-    fun requestInstallPermission(context: Context) {
+    private fun requestInstallPermission(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!context.packageManager.canRequestPackageInstalls()) {
                 val intent = Intent(
