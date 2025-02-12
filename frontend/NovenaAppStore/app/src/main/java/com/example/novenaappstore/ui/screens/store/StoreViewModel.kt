@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,8 +35,18 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
     private val _error = MutableLiveData<String?>(null) // Holds any error message
     val error: LiveData<String?> get() = _error
 
-    private val _downloading = MutableLiveData(false) // Download loading
-    val downloading: LiveData<Boolean> get() = _downloading
+//    private val _downloading = MutableLiveData(false) // Download loading
+//    val downloading: LiveData<Boolean> get() = _downloading
+
+    private val _downloadingAppId = MutableLiveData<String?>(null)
+    val downloadingAppId: LiveData<String?> = _downloadingAppId
+
+    // LiveData to track if ANY app is downloading
+    val isAnyDownloading = MediatorLiveData<Boolean>().apply {
+        addSource(_downloadingAppId) { appId ->
+            value = appId != null  // True if an app is downloading, False if null
+        }
+    }
 
     fun clearError() {
         _error.value = null
@@ -87,11 +98,12 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
         }
     }
 
-    public fun downloadFile(context: Context, fileUrl: String) {
+    public fun downloadFile(context: Context, fileUrl: String, appId: String) {
         val service = RetrofitInstance.api
 
         // Show loading screen
-        _downloading.value = true
+        //_downloading.value = true
+        _downloadingAppId.value = appId
 
         service.downloadFile(fileUrl).enqueue(object : Callback<ResponseBody> {
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
@@ -103,13 +115,15 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
                     }
                 } else {
                     Log.e("Download", "Failed: ${response.errorBody()?.string()}")
-                    _downloading.value = false // Hide loading screen on failure
+                    //_downloading.value = false // Hide loading screen on failure
+                    _downloadingAppId.value = null
                 }
             }
 
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                 Log.e("Download", "Error: ${t.message}")
-                _downloading.value = false // Hide loading screen on failure
+                //_downloading.value = false // Hide loading screen on failure
+                _downloadingAppId.value = null
             }
         })
     }
@@ -136,13 +150,15 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
 
             // Switch back to the main thread to update UI
             withContext(Dispatchers.Main) {
-                _downloading.value = false // Hide loading screen
+                //_downloading.value = false // Hide loading screen
+                _downloadingAppId.value = null
                 ApkInstaller.installApk(context, fileName) // Start installation
             }
         } catch (e: IOException) {
             Log.e("Download", "File save error: ${e.message}")
             withContext(Dispatchers.Main) {
-                _downloading.value = false
+                //_downloading.value = false
+                _downloadingAppId.value = null
             }
         }
     }

@@ -46,6 +46,7 @@ import com.example.novenaappstore.ui.theme.PoppinsFontFamily
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Dialog
@@ -89,7 +90,9 @@ fun StoreScreen(viewModel: StoreViewModel) {
 @Composable
 fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
     val context = LocalContext.current
-    val isDownloading = viewModel.downloading.observeAsState(false).value
+    val downloadingAppId by viewModel.downloadingAppId.observeAsState()
+    val isAnyDownloading by viewModel.isAnyDownloading.observeAsState(false)
+    val isDownloading = downloadingAppId == appWithState.app.id.toString() // Is this app downloading?
 
     Card(
         modifier = Modifier
@@ -138,6 +141,7 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                             viewModel.downloadFile(
                                 context,
                                 appWithState.app.fileName,
+                                appWithState.app.id.toString()
                             )
                         }
 
@@ -160,24 +164,33 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                     .height(25.dp), // Force a small height
                 contentPadding = PaddingValues(horizontal = 10.dp), // Minimal padding
 
+                enabled = !isAnyDownloading // Disable ALL buttons if any download is in progress
+
             ) {
-                Text(
-                    text = when (appWithState.state) {
-                        AppState.NOT_INSTALLED -> "Install"
-                        AppState.OUTDATED -> "Update"
-                        AppState.UP_TO_DATE -> "Open"
-                        AppState.DOWNLOADING -> TODO()
-                    }.uppercase(),
-                    fontFamily = PoppinsFontFamily,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 8.sp
-                )
+                if (isDownloading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(15.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = when (appWithState.state) {
+                            AppState.NOT_INSTALLED -> "Install"
+                            AppState.OUTDATED -> "Update"
+                            AppState.UP_TO_DATE -> "Open"
+                            AppState.DOWNLOADING -> TODO()
+                        }.uppercase(),
+                        fontFamily = PoppinsFontFamily,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 8.sp
+                    )
+                }
+
             }
 
         }
     }
-    // Show loading dialog while downloading
-    LoadingDialog(isVisible = isDownloading)
 }
 
 @Composable
@@ -244,27 +257,6 @@ fun SimpleInversePullRefresh(
             content() // Your main content composable
         }
     }
-
-    @Composable
-    fun LoadingDialog(isVisible: Boolean) {
-        if (isVisible) {
-            Dialog(onDismissRequest = {}) {
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .background(
-                            color = if (isSystemInDarkTheme()) Color.DarkGray else Color.White,
-                            shape = MaterialTheme.shapes.medium
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-        }
-    }
-
-
 }
 
 @Composable
