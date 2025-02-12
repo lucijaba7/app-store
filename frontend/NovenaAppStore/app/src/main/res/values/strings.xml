@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Novena App Store</string>
+    <string name="sample_device_admin">Admin</string>
+    <string name="admin_receiver_status">Admin status: %1$s</string>
+    <string name="admin_receiver_status_enabled">Device Admin enabled</string>
+    <string name="admin_receiver_status_disabled">Device Admin disabled</string>
+    <string name="admin_receiver_status_pw_changed">Password changed</string>
+    <string name="admin_receiver_status_disable_warning">Are you sure you want to disable the device admin?</string>
+    <string name="add_admin_extra_app_text">Add device admin??</string>
 </resources>

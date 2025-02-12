@@ -73,6 +73,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
 
         // Display apps if successfully fetched
         if (apps.isNotEmpty()) {
+
             LazyColumn  {
                 itemsIndexed(
                     apps

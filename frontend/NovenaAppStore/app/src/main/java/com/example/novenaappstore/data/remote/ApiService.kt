@@ -11,9 +11,6 @@ interface ApiService {
     @GET("/apps")
     suspend fun getApps(): Response<List<App>>
 
-    @GET("download/{filename}")
+    @GET("/apps/{filename}")
     fun downloadFile(@Path("filename") filename: String): Call<ResponseBody>
-
-    @GET("download/{filename}")
-    fun downloadApk(@Path("filename") filename: String): Response<ResponseBody>
 }

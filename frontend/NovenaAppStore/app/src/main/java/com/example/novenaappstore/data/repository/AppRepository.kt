@@ -18,9 +18,7 @@ class AppRepository(private val context: Context) {
         return api.getApps()
     }
 
-    suspend fun downloadApk(filename: String): Response<ResponseBody> {
-        return api.downloadApk(filename)
-    }
+
 
     /*
     // Function to download APK

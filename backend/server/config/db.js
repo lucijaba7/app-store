@@ -1,6 +1,9 @@
 const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
 
-const db = new sqlite3.Database("store.db", (err) => {
+const DB_PATH = path.join(__dirname, "../store.db");
+
+const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
         console.error("Error opening database:", err.message);
     } else {
@@ -10,14 +13,12 @@ const db = new sqlite3.Database("store.db", (err) => {
 
 // Create tables when the server starts
 db.serialize(() => {
-    // Users table
     db.run(`CREATE TABLE IF NOT EXISTS user (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL
     )`);
 
-    // Apps table (stores apps and file paths)
     db.run(`CREATE TABLE IF NOT EXISTS app (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         app_name TEXT NOT NULL,
@@ -27,7 +28,6 @@ db.serialize(() => {
         icon BLOB NOT NULL
     )`);
 
-    // User-App Access table (tracks which user has access to which app)
     db.run(`CREATE TABLE IF NOT EXISTS user_app (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -39,4 +39,4 @@ db.serialize(() => {
     console.log("Database initialized successfully.");
 });
 
-module.exports = db; // Export the database connection
+module.exports = db;

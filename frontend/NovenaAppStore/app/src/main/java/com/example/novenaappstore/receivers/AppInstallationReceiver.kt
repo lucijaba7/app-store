@@ -3,17 +3,13 @@ package com.example.novenaappstore.receivers
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.util.Log
 
-class AppInstallationReceiver: BroadcastReceiver()  {
+class AppInstallationReceiver(private val onStatusChanged: (Int) -> Unit): BroadcastReceiver()  {
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action
-        val packageName = intent.data?.encodedSchemeSpecificPart
-
-        if (action == Intent.ACTION_PACKAGE_ADDED) {
-            Log.d("AppReceiver", "App Installed: $packageName")
-        } else if (action == Intent.ACTION_PACKAGE_REMOVED) {
-            Log.d("AppReceiver", "App Uninstalled: $packageName")
-        }
+        val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
+        onStatusChanged(status)
+        Log.d("StatusReceiver", "Received status update: $status")
     }
 }
