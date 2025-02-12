@@ -14,7 +14,8 @@ data class App(
 enum class AppState {
     NOT_INSTALLED,
     OUTDATED,
-    UP_TO_DATE
+    UP_TO_DATE,
+    DOWNLOADING
 }
 
 data class AppWithState(

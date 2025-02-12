@@ -47,7 +47,6 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
         _error.value = null // Clear any previous errors
 
         viewModelScope.launch {
-            delay(3000)
             try {
 
                 val installedPackages = context.packageManager.getInstalledPackages(0)
@@ -85,49 +84,5 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
         }
     }
 
-    // Download APK from backend
-    fun downloadApk(filename: String) {
-        _loading.value = true // Set loading to true when download starts
-        _error.value = null // Clear any previous errors
 
-        viewModelScope.launch {
-            try {
-                // Call the repository to download the APK
-                val response = repository.downloadApk(filename)
-                if (response.isSuccessful) {
-                    // If the download is successful, get the input stream
-                    val inputStream = response.body()?.byteStream()
-
-                    // Save the file to device storage
-                    if (inputStream != null) {
-                        saveFileToStorage(inputStream, filename)
-                        _error.postValue("Download completed successfully.")
-                    } else {
-                        _error.postValue("Failed to download APK.")
-                    }
-                } else {
-                    _error.postValue("Failed to fetch the APK: ${response.message()}")
-                }
-            } catch (e: Exception) {
-                // Handle errors such as network failure
-                _error.postValue("An error occurred: ${e.message}")
-            } finally {
-                _loading.value = false // Set loading to false after download is done
-            }
-        }
-    }
-
-    // Save the file to device storage
-    private fun saveFileToStorage(inputStream: InputStream, filename: String) {
-        val file = File(context.getExternalFilesDir(null), filename)
-        val outputStream = FileOutputStream(file)
-        val buffer = ByteArray(1024)
-        var bytesRead: Int
-        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-            outputStream.write(buffer, 0, bytesRead)
-        }
-        outputStream.flush()
-        outputStream.close()
-        inputStream.close()
-    }
 }
