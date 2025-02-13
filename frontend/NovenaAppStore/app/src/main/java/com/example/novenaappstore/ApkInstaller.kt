@@ -12,7 +12,8 @@ import java.io.File
 
 object ApkInstaller {
     fun installApk(context: Context, fileName: String) {
-        requestInstallPermission(context)
+        //requestInstallPermission(context)
+
         try {
             val file = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
@@ -34,31 +35,32 @@ object ApkInstaller {
                 setDataAndType(apkUri, "application/vnd.android.package-archive")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
+
             context.startActivity(intent)
-            
+
         } catch (e: Exception) {
             Log.e("ApkInstaller", "Installation failed: ${e.message}")
         }
     }
 
-    private fun requestInstallPermission(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (!context.packageManager.canRequestPackageInstalls()) {
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:${context.packageName}")
-                )
-                context.startActivity(intent)
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!context.packageManager.canRequestPackageInstalls()) {
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                )
-                context.startActivity(intent)
-            }
-        }
-    }
+//    private fun requestInstallPermission(context: Context) {
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            if (!context.packageManager.canRequestPackageInstalls()) {
+//                val intent = Intent(
+//                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+//                    Uri.parse("package:${context.packageName}")
+//                )
+//                context.startActivity(intent)
+//            }
+//        }
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//            if (!context.packageManager.canRequestPackageInstalls()) {
+//                val intent = Intent(
+//                    Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+//                )
+//                context.startActivity(intent)
+//            }
+//        }
+//    }
 }

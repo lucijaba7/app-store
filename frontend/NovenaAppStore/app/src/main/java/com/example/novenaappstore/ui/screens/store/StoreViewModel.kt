@@ -1,7 +1,12 @@
 package com.example.novenaappstore.ui.screens.store
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
@@ -13,7 +18,9 @@ import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
 import com.example.novenaappstore.data.remote.RetrofitInstance
 import com.example.novenaappstore.data.repository.AppRepository
+import kotlinx.coroutines.Delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
@@ -56,14 +63,19 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
         fetchApps() // Start fetching apps when ViewModel is initialized
     }
 
+
     fun fetchApps() {
         _loading.value = true // Set loading to true when the fetch starts
         _error.value = null // Clear any previous errors
+        _downloadingAppId.value = null
 
         viewModelScope.launch {
             try {
 
                 val installedPackages = context.packageManager.getInstalledPackages(0)
+//                for (pack in installedPackages) {
+//                    Log.d("InstallPack", pack.packageName)
+//                }
                 val response = repository.getApps() // Fetch apps from the repository
                 if (response.isSuccessful) {
                     val fetchedApps = response.body() ?: emptyList()
@@ -150,9 +162,8 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
 
             // Switch back to the main thread to update UI
             withContext(Dispatchers.Main) {
-                //_downloading.value = false // Hide loading screen
-                _downloadingAppId.value = null
                 ApkInstaller.installApk(context, fileName) // Start installation
+                _downloadingAppId.value = null
             }
         } catch (e: IOException) {
             Log.e("Download", "File save error: ${e.message}")
@@ -163,5 +174,49 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
         }
     }
 
+    fun onAppInstalled(packageName: String) {
+        Log.e("StoreViewModel", "Handling installed app: $packageName")
+        // Get the current list of apps
+        _apps.value?.let { appsList ->
+            // Find the app that was installed
+            val updatedApps = appsList.map { appWithState ->
+                if (appWithState.app.packageName == packageName) {
+                    // Update the state of this app to UP_TO_DATE
+                    appWithState.copy(state = AppState.UP_TO_DATE)
+                } else {
+                    appWithState
+                }
+            }
 
+            // Update the LiveData with the updated list
+            _apps.value = updatedApps
+        }
+    }
+
+    // Listen for the package added event
+    fun registerInstallReceiver() {
+        val filter = IntentFilter(Intent.ACTION_PACKAGE_ADDED)
+        filter.addDataScheme("package")  // The URI scheme for package is "package"
+
+        // Register the receiver to listen for package installations
+        context.registerReceiver(packageReceiver, filter)
+    }
+
+    // Unregister the receiver when it's no longer needed
+    fun unregisterInstallReceiver() {
+        context.unregisterReceiver(packageReceiver)
+    }
+
+    // BroadcastReceiver to handle package installation events
+    private val packageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent != null) {
+                val packageName = intent.data?.encodedSchemeSpecificPart
+                if (packageName != null) {
+                    // Update the app state for the installed app
+                    onAppInstalled(packageName)
+                }
+            }
+        }
+    }
 }

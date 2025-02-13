@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -46,9 +47,12 @@ import com.example.novenaappstore.ui.theme.PoppinsFontFamily
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.window.Dialog
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
@@ -59,6 +63,18 @@ fun StoreScreen(viewModel: StoreViewModel) {
     val loading = viewModel.loading.observeAsState(false).value
     val error = viewModel.error.observeAsState().value
     val openAlertDialog = remember { mutableStateOf(false) }
+
+    // Register the receiver when the composable is first created
+    LaunchedEffect(Unit) {
+        viewModel.registerInstallReceiver()
+    }
+
+    // Unregister the receiver when the composable is disposed of
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.unregisterInstallReceiver()
+        }
+    }
 
     // Show the error dialog when there is an error
     ErrorDialog(
@@ -93,8 +109,7 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
     val context = LocalContext.current
     val downloadingAppId by viewModel.downloadingAppId.observeAsState()
     val isAnyDownloading by viewModel.isAnyDownloading.observeAsState(false)
-    val isDownloading = downloadingAppId == appWithState.app.id.toString() // Is this app downloading?
-
+    val isDownloading = downloadingAppId == appWithState.app.id.toString() // Is this app downloading
     Card(
         modifier = Modifier
             .height(100.dp)
