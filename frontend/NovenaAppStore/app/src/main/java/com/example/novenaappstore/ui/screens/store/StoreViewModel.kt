@@ -163,7 +163,6 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
             // Switch back to the main thread to update UI
             withContext(Dispatchers.Main) {
                 ApkInstaller.installApk(context, fileName) // Start installation
-                _downloadingAppId.value = null
             }
         } catch (e: IOException) {
             Log.e("Download", "File save error: ${e.message}")
@@ -175,7 +174,7 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
     }
 
     fun onAppInstalled(packageName: String) {
-        Log.e("StoreViewModel", "Handling installed app: $packageName")
+        Log.d("StoreViewModel", "Handling installed app: $packageName")
         // Get the current list of apps
         _apps.value?.let { appsList ->
             // Find the app that was installed
@@ -190,6 +189,7 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
 
             // Update the LiveData with the updated list
             _apps.value = updatedApps
+            _downloadingAppId.value = null
         }
     }
 
