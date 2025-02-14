@@ -1,15 +1,15 @@
 const express = require("express");
 const { upload, findFile } = require("../config/storage");
 const { authMiddleware } = require("../middlewares/authMiddleware");
-const { saveAppInfo, getAllApps, findAppByPackageName } = require("../controllers/app");
+const { saveAppInfo, getAllAppsForUser, findAppByPackageName } = require("../controllers/app");
 const path = require("path");
 
 const router = express.Router();
 
 // List all apps
-router.get("/", async (req, res) => {
+router.get("/", authMiddleware, async (req, res) => {
     try {
-        const apps = await getAllApps();
+        const apps = await getAllAppsForUser(req.user);
         res.json(apps);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -20,7 +20,7 @@ router.get("/", async (req, res) => {
 // Upload APK (Protected)
 router.post("/upload", upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-
+    //if (req.user.role != "admin") return res.status(400).json({ error: "User is not admin" });
     try {
         const appInfo = await saveAppInfo(req.file.path);
         res.json({ success: true, ...appInfo });
@@ -30,12 +30,12 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 });
 
 
-router.get("/:fileName", async (req, res) => {
-    const { fileName } = req.params;
+router.get("/:packageName", async (req, res) => {
+    const { packageName } = req.params;
 
     try {
         // Try to find the file in the directory
-        const filePath = findFile(fileName);
+        const filePath = findFile(packageName);
         console.log("Found file path:", filePath); // Debugging log
 
         if (!filePath) {

@@ -1,7 +1,8 @@
 package com.example.novenaappstore.data.model
 
 data class User(
-    val id: String,
-    val email: String,
     val token: String
 )
+ data class LoginData(
+     val username: String, val password: String
+ )

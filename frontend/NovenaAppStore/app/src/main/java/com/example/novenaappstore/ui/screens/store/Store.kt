@@ -1,10 +1,13 @@
 package com.example.novenaappstore.ui.screens.store
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -25,40 +28,37 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.novenaappstore.ui.theme.PoppinsFontFamily
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.window.Dialog
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
+import com.example.novenaappstore.ui.theme.PoppinsFontFamily
+
 
 @Composable
 fun StoreScreen(viewModel: StoreViewModel) {
+
     val apps = viewModel.apps.observeAsState(emptyList()).value
     val loading = viewModel.loading.observeAsState(false).value
     val error = viewModel.error.observeAsState().value
@@ -66,7 +66,9 @@ fun StoreScreen(viewModel: StoreViewModel) {
 
     // Register the receiver when the composable is first created
     LaunchedEffect(Unit) {
+        viewModel.fetchApps()
         viewModel.registerInstallReceiver()
+
     }
 
     // Unregister the receiver when the composable is disposed of
@@ -90,7 +92,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
         // Display apps if successfully fetched
         if (apps.isNotEmpty()) {
 
-            LazyColumn  {
+            LazyColumn {
                 itemsIndexed(
                     apps
                 ) { _, app ->
@@ -99,6 +101,23 @@ fun StoreScreen(viewModel: StoreViewModel) {
             }
         }
 
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        FloatingActionButton(
+            onClick = {
+                viewModel.logout()
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp) // Adjust padding as needed
+
+        ) {
+            Icon(
+                imageVector = Icons.Default.ExitToApp,
+                contentDescription = "Logout"
+            )
+        }
     }
 }
 
@@ -109,7 +128,8 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
     val context = LocalContext.current
     val downloadingAppId by viewModel.downloadingAppId.observeAsState()
     val isAnyDownloading by viewModel.isAnyDownloading.observeAsState(false)
-    val isDownloading = downloadingAppId == appWithState.app.id.toString() // Is this app downloading
+    val isDownloading =
+        downloadingAppId == appWithState.app.id.toString() // Is this app downloading
     Card(
         modifier = Modifier
             .height(100.dp)
@@ -168,8 +188,26 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                         }
 
                         AppState.UP_TO_DATE -> {
-                            // Handle the open app action
-                            Log.e("Open", "Open app")
+
+                            val packageManager: PackageManager = context.packageManager
+                            val intent: Intent? =  packageManager.getLaunchIntentForPackage(appWithState.app.packageName);
+
+                            if (intent != null) {
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: SecurityException) {
+                                    Log.e("APP LAUNCH", "Error starting app launch intent: ", e)
+                                    // apps that don't export their launch activity cause this
+                                    Toast.makeText(
+                                        context,
+                                        "Cannot launch app",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+
+                            }
+
+
                         }
 
                         AppState.DOWNLOADING -> TODO()

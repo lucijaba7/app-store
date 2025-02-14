@@ -2,7 +2,10 @@ package com.example.novenaappstore.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.example.novenaappstore.data.auth.AuthManager
 import com.example.novenaappstore.data.model.App
+import com.example.novenaappstore.data.model.LoginData
+import com.example.novenaappstore.data.model.User
 import com.example.novenaappstore.data.remote.RetrofitInstance
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -15,9 +18,14 @@ class AppRepository(private val context: Context) {
     private val api = RetrofitInstance.api
 
     suspend fun getApps(): Response<List<App>> {
-        return api.getApps()
+        val token = AuthManager.getToken(context)
+        return api.getApps("Bearer $token")
     }
 
+    suspend fun login(username: String, password: String): Response<User> {
+        val request = LoginData(username, password)
+        return api.login(request)
+    }
 
 
     /*

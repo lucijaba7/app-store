@@ -87,3 +87,15 @@ class MainActivity : ComponentActivity() {
         return packageManager.canRequestPackageInstalls()
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+

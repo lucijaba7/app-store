@@ -14,27 +14,33 @@ import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.novenaappstore.data.auth.AuthManager
 import com.example.novenaappstore.data.remote.ApiService
 import com.example.novenaappstore.data.repository.AppRepository
 import com.example.novenaappstore.receivers.MyDeviceAdminReceiver
 import com.example.novenaappstore.ui.screens.auth.AuthScreen
+import com.example.novenaappstore.ui.screens.auth.AuthViewModel
 import com.example.novenaappstore.ui.screens.store.StoreScreen
 import com.example.novenaappstore.ui.screens.store.StoreViewModel
 import com.example.novenaappstore.ui.theme.NovenaAppStoreTheme
 
 @Composable
 fun App() {
-    val context = LocalContext.current;
+    val context = LocalContext.current
     val appRepo = AppRepository(context)
     val navController = rememberNavController()
 
-    val storeVieModel = StoreViewModel(context, appRepo)
+    val storeViewModel = StoreViewModel(context, appRepo, navController)
+    val authViewModel = AuthViewModel(context, appRepo, navController)
 
-    NovenaAppStoreTheme {  // Apply your custom theme
+    // Determine the start screen based on token validity
+    val startDestination = if (AuthManager.isTokenValid(context)) "store" else "auth"
+
+    NovenaAppStoreTheme {
         Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
-            NavHost(navController = navController, startDestination = "store") {
-                composable("auth") { AuthScreen(navController) }
-                composable("store") { StoreScreen(storeVieModel) }
+            NavHost(navController = navController, startDestination = startDestination) {
+                composable("auth") { AuthScreen(authViewModel) }
+                composable("store") { StoreScreen(storeViewModel) }
             }
         }
     }

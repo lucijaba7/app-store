@@ -1,5 +1,7 @@
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
+const bcrypt = require("bcryptjs");
+const seedDatabase = require("./dummyData");
 
 const DB_PATH = path.join(__dirname, "../store.db");
 
@@ -16,7 +18,8 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS user (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        role TEXT 
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS app (
@@ -29,14 +32,18 @@ db.serialize(() => {
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS user_app (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         app_id INTEGER NOT NULL,
+        PRIMARY KEY (user_id, app_id),
         FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
         FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE
     )`);
 
     console.log("Database initialized successfully.");
+
+    // Call function to seed database
+    seedDatabase(db);
+
 });
 
 module.exports = db;

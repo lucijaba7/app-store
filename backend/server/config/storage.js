@@ -18,7 +18,6 @@ const storage = multer.diskStorage({
 // Function to search for a file in a directory (recursively)
 function findFile(filename) {
     let directory = path.join(__dirname, "../uploads");
-
     let result = null;
     const files = fs.readdirSync(directory, { withFileTypes: true });
 

@@ -7,5 +7,7 @@ A simple app store system with a **Node.js backend** and a frontend (coming soon
 ```sh
 cd backend
 npm install
+cp .env.example .env
 npm run dev
+
 ```

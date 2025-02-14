@@ -1,10 +1,12 @@
 package com.example.novenaappstore.data.remote
 
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
     private const val BASE_URL = "http://192.168.1.79:3000/"
+
 
     val api: ApiService by lazy {
         Retrofit.Builder()
@@ -17,4 +19,5 @@ object RetrofitInstance {
     fun getBaseUrl(): String {
         return BASE_URL
     }
+
 }

@@ -9,22 +9,19 @@ function getUserByUsername(username) {
     });
 }
 
-function createUser(username, password) {
+function createUser(username, hashedPassword, role) {
     return new Promise((resolve, reject) => {
-        db.run(`INSERT INTO user (username, password) VALUES (?, ?)`, [username, password], function (err) {
-            if (err) return reject(err);
-            resolve({ id: this.lastID, username });
-        });
+        db.run(
+            "INSERT INTO user (username, password, role) VALUES (?, ?, ?)",
+            [username, hashedPassword, role],
+            (err) => {
+                if (err) return reject(err);
+                resolve({ id: this.lastID, username, role });
+            }
+        );
     });
+
+
 }
 
-function checkUserAppAccess(userId, appId) {
-    return new Promise((resolve, reject) => {
-        db.get(`SELECT * FROM user_app WHERE user_id = ? AND app_id = ?`, [userId, appId], (err, row) => {
-            if (err) return reject(err);
-            resolve(row !== undefined); // Return true if access exists
-        });
-    });
-}
-
-module.exports = { getUserByUsername, createUser, checkUserAppAccess };
+module.exports = { getUserByUsername, createUser };

@@ -13,7 +13,9 @@ import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
 import com.example.novenaappstore.ApkInstaller
+import com.example.novenaappstore.data.auth.AuthManager
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
 import com.example.novenaappstore.data.remote.RetrofitInstance
@@ -31,7 +33,11 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-class StoreViewModel(private val context: Context, private val repository: AppRepository) :
+class StoreViewModel(
+    private val context: Context,
+    private val repository: AppRepository,
+    private val navController: NavController
+) :
     ViewModel() {
     private val _apps = MutableLiveData<List<AppWithState>>(emptyList()) // Holds the list of apps
     val apps: LiveData<List<AppWithState>> get() = _apps
@@ -59,12 +65,13 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
         _error.value = null
     }
 
-    init {
-        fetchApps() // Start fetching apps when ViewModel is initialized
+    fun logout() {
+        AuthManager.removeToken(context)
+        navController.navigate("auth")
     }
 
-
     fun fetchApps() {
+        _apps.value = emptyList()
         _loading.value = true // Set loading to true when the fetch starts
         _error.value = null // Clear any previous errors
         _downloadingAppId.value = null
@@ -98,7 +105,12 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
                     // Post the list of apps with their states
                     _apps.postValue(appsWithState)
 
-                } else {
+                }
+                else if (response.code() == 401)
+                {
+                    logout()
+                }
+                else {
                     _error.postValue("Failed to fetch apps: ${response.message()}") // Set error message
                 }
             } catch (e: Exception) {
@@ -112,7 +124,6 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
 
     public fun downloadFile(context: Context, fileUrl: String, appId: String) {
         val service = RetrofitInstance.api
-
         // Show loading screen
         //_downloading.value = true
         _downloadingAppId.value = appId
@@ -121,7 +132,7 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                 if (response.isSuccessful) {
                     response.body()?.let { body ->
-                        viewModelScope.launch (Dispatchers.IO) {
+                        viewModelScope.launch(Dispatchers.IO) {
                             saveFile(context, body, fileUrl)
                         }
                     }
@@ -140,10 +151,11 @@ class StoreViewModel(private val context: Context, private val repository: AppRe
         })
     }
 
-    suspend fun saveFile(context : Context, body: ResponseBody, fileUrl: String) {
+    suspend fun saveFile(context: Context, body: ResponseBody, fileUrl: String) {
         try {
             val fileName = fileUrl.substringAfterLast("/")
-            val filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/$fileName"
+            val filePath =
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/$fileName"
             val file = File(filePath)
 
             body.byteStream().use { inputStream ->
