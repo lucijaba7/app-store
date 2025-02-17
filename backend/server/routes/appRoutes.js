@@ -1,7 +1,7 @@
 const express = require("express");
 const { upload, findFile } = require("../config/storage");
 const { authMiddleware } = require("../middlewares/authMiddleware");
-const { saveAppInfo, getAllAppsForUser, findAppByPackageName } = require("../controllers/app");
+const { saveAppInfo, getAllAppsForUser } = require("../controllers/app");
 const path = require("path");
 
 const router = express.Router();

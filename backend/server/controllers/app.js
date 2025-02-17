@@ -73,5 +73,17 @@ function getAllAppsForUser(user) {
     });
 }
 
+function findAppByPackageName(packageName) {
+    return new Promise((resolve, reject) => {
+        db.run(`
+        SELECT *
+        FROM app
+        WHERE package_name = ?
+    `, [packageName], (err) => {
+            if (err) return reject(err);
+            resolve();
+        })
+    });
+}
 
 module.exports = { saveAppInfo, getAllAppsForUser };
