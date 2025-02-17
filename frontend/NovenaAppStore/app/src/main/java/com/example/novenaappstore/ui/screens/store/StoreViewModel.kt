@@ -1,6 +1,9 @@
 package com.example.novenaappstore.ui.screens.store
 
+import android.app.admin.DeviceAdminReceiver
+import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -203,6 +206,8 @@ class StoreViewModel(
             _apps.value = updatedApps
             _downloadingAppId.value = null
         }
+
+        addAppToWhitelist(context, packageName)
     }
 
     // Listen for the package added event
@@ -231,4 +236,40 @@ class StoreViewModel(
             }
         }
     }
+
+    // adding installed apps to white list enabling them to enter kiosk mode
+
+//    fun getWhitelistedApps(context: Context): List<String> {
+//        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+//        val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
+//        return dpm.getLockTaskPackages(adminComponent).toList()
+//    }
+//
+//    fun addAppToWhitelist(context: Context, packageName: String) {
+//        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+//        val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
+//
+//        // Get current whitelisted apps
+//        val currentApps = getWhitelistedApps(context).toMutableList()
+//
+//        if (!currentApps.contains(packageName)) {
+//            currentApps.add(packageName) // Add new app
+//            dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
+//        }
+//
+//        Log.d("Kiosk mode", "App has been added to list.")
+//    }
+//
+//    fun removeAppFromWhitelist(context: Context, packageName: String) {
+//        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+//        val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
+//
+//        // Get current whitelisted apps
+//        val currentApps = getWhitelistedApps(context).toMutableList()
+//
+//        if (currentApps.contains(packageName)) {
+//            currentApps.remove(packageName) // Remove app
+//            dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
+//        }
+//    }
 }

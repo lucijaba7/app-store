@@ -5,6 +5,7 @@ async function saveAppInfo(filePath) {
     const appInfo = await extractAppInfo(filePath);
 
     const existingApp = await findAppByPackageName(appInfo.packageName);
+    console.log(existingApp);
     if (existingApp) {
         return new Promise((resolve, reject) => {
             db.run(`
@@ -79,9 +80,9 @@ function findAppByPackageName(packageName) {
         SELECT *
         FROM app
         WHERE package_name = ?
-    `, [packageName], (err) => {
+    `, [packageName], (err, row) => {
             if (err) return reject(err);
-            resolve();
+            resolve(row);
         })
     });
 }
