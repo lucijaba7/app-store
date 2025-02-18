@@ -4,6 +4,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
 import android.os.UserManager
@@ -14,6 +15,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.novenaappstore.receivers.AppUninstallReceiver
 import com.example.novenaappstore.receivers.MyDeviceAdminReceiver
 
 class MainActivity : ComponentActivity() {
@@ -46,10 +48,20 @@ class MainActivity : ComponentActivity() {
         }
 
         enableUnknownSources(devicePolicyManager, deviceAdminSample )
+        registerUninstallReceiver()
 
         setContent {
             App() // Your Composable UI
         }
+    }
+
+    private fun registerUninstallReceiver(){
+        val receiver = AppUninstallReceiver()
+        val filter = IntentFilter(Intent.ACTION_PACKAGE_REMOVED).apply {
+            addDataScheme("package")
+        }
+
+        registerReceiver(receiver, filter)
     }
 
     private fun requestDeviceAdminPermission() {

@@ -24,6 +24,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.sp
@@ -37,6 +39,9 @@ fun AuthScreen(authViewModel: AuthViewModel) {
     val password = authViewModel.password.value
     val errorMessage = authViewModel.errorMessage.value
     val isLaoding = authViewModel.loading.observeAsState(false).value
+    val textColor = MaterialTheme.colorScheme.onSurface // Material 3 color scheme
+    val placeholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) // Slightly faded
+    val cursorColor = MaterialTheme.colorScheme.primary // Adaptive caret color
 
     LaunchedEffect(Unit) {
         authViewModel.reset()
@@ -59,13 +64,15 @@ fun AuthScreen(authViewModel: AuthViewModel) {
         BasicTextField(
             value = username,
             onValueChange = { authViewModel.username.value = it },
+            textStyle = TextStyle(color = textColor),
+            cursorBrush = SolidColor(cursorColor), // Set the cursor color dynamically
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxWidth()) {
-                    if (username.isEmpty()) Text("Username", color = Color.Gray)
+                    if (username.isEmpty()) Text("Username", color = placeholderColor)
                     innerTextField()
                 }
             }
@@ -76,6 +83,8 @@ fun AuthScreen(authViewModel: AuthViewModel) {
         BasicTextField(
             value = password,
             onValueChange = { authViewModel.password.value = it },
+            textStyle = TextStyle(color = textColor),
+            cursorBrush = SolidColor(cursorColor), // Set the cursor color dynamically
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
@@ -83,7 +92,7 @@ fun AuthScreen(authViewModel: AuthViewModel) {
                 .padding(8.dp),
             decorationBox = { innerTextField ->
                 Box(Modifier.fillMaxWidth()) {
-                    if (password.isEmpty()) Text("Password", color = Color.Gray)
+                    if (password.isEmpty()) Text("Password", color = placeholderColor)
                     innerTextField()
                 }
             }

@@ -1,6 +1,5 @@
 package com.example.novenaappstore.ui.screens.store
 
-import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -8,8 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
@@ -23,9 +20,8 @@ import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
 import com.example.novenaappstore.data.remote.RetrofitInstance
 import com.example.novenaappstore.data.repository.AppRepository
-import kotlinx.coroutines.Delay
+import com.example.novenaappstore.receivers.MyDeviceAdminReceiver
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
@@ -81,12 +77,9 @@ class StoreViewModel(
 
         viewModelScope.launch {
             try {
-
                 val installedPackages = context.packageManager.getInstalledPackages(0)
-//                for (pack in installedPackages) {
-//                    Log.d("InstallPack", pack.packageName)
-//                }
                 val response = repository.getApps() // Fetch apps from the repository
+
                 if (response.isSuccessful) {
                     val fetchedApps = response.body() ?: emptyList()
                     // Determine the state of each app
@@ -107,7 +100,6 @@ class StoreViewModel(
 
                     // Post the list of apps with their states
                     _apps.postValue(appsWithState)
-
                 }
                 else if (response.code() == 401)
                 {
@@ -239,37 +231,25 @@ class StoreViewModel(
 
     // adding installed apps to white list enabling them to enter kiosk mode
 
-//    fun getWhitelistedApps(context: Context): List<String> {
-//        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-//        val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
-//        return dpm.getLockTaskPackages(adminComponent).toList()
-//    }
-//
-//    fun addAppToWhitelist(context: Context, packageName: String) {
-//        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-//        val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
-//
-//        // Get current whitelisted apps
-//        val currentApps = getWhitelistedApps(context).toMutableList()
-//
-//        if (!currentApps.contains(packageName)) {
-//            currentApps.add(packageName) // Add new app
-//            dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
-//        }
-//
-//        Log.d("Kiosk mode", "App has been added to list.")
-//    }
-//
-//    fun removeAppFromWhitelist(context: Context, packageName: String) {
-//        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-//        val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
-//
-//        // Get current whitelisted apps
-//        val currentApps = getWhitelistedApps(context).toMutableList()
-//
-//        if (currentApps.contains(packageName)) {
-//            currentApps.remove(packageName) // Remove app
-//            dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
-//        }
-//    }
+    fun getWhitelistedApps(context: Context): List<String> {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
+        return dpm.getLockTaskPackages(adminComponent).toList()
+    }
+
+    fun addAppToWhitelist(context: Context, packageName: String) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
+
+        // Get current whitelisted apps
+        val currentApps = getWhitelistedApps(context).toMutableList()
+
+        if (!currentApps.contains(packageName)) {
+            currentApps.add(packageName) // Add new app
+            dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
+        }
+
+        Log.d("Kiosk mode", "App has been added to list.")
+    }
+
 }
