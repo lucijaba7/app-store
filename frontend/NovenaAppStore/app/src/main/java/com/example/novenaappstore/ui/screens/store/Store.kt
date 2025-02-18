@@ -20,12 +20,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -68,6 +70,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
     LaunchedEffect(Unit) {
         viewModel.fetchApps()
         viewModel.registerInstallReceiver()
+        viewModel.registerUninstallReceiver()
 
     }
 
@@ -75,6 +78,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
     DisposableEffect(Unit) {
         onDispose {
             viewModel.unregisterInstallReceiver()
+            viewModel.unregisterUninstallReceiver()
         }
     }
 
@@ -128,8 +132,8 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
     val context = LocalContext.current
     val downloadingAppId by viewModel.downloadingAppId.observeAsState()
     val isAnyDownloading by viewModel.isAnyDownloading.observeAsState(false)
-    val isDownloading =
-        downloadingAppId == appWithState.app.id.toString() // Is this app downloading
+    val isDownloading = downloadingAppId == appWithState.app.id.toString() // Is this app downloading
+
     Card(
         modifier = Modifier
             .height(100.dp)
@@ -180,13 +184,10 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                                 appWithState.app.id.toString()
                             )
                         }
-
                         AppState.OUTDATED -> {
                             // Handle update action (e.g., re-install or update)
                             Log.e("Update", "Update app")
-
                         }
-
                         AppState.UP_TO_DATE -> {
 
                             val packageManager: PackageManager = context.packageManager
@@ -206,10 +207,7 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                                 }
 
                             }
-
-
                         }
-
                         AppState.DOWNLOADING -> TODO()
                     }
                 },
@@ -240,12 +238,35 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                         fontSize = 8.sp
                     )
                 }
-
             }
+            // Show "Uninstall" Button if App is Installed
+            if (appWithState.state == AppState.UP_TO_DATE) {
+                Spacer(modifier = Modifier.width(8.dp)) // Add space between buttons
+
+                Button(
+                    onClick = {
+                        viewModel.uninstallApp(context, appWithState.app.packageName)
+                    },
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .height(25.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                    colors = ButtonDefaults.buttonColors(Color.Red)
+                ) {
+                    Text(
+                        text = "Uninstall",
+                        fontFamily = PoppinsFontFamily,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 8.sp,
+                        color = Color.White
+                    )
+                }
+            }
+        }
 
         }
     }
-}
+
 
 @Composable
 fun LoadingDialog(isVisible: Boolean) {

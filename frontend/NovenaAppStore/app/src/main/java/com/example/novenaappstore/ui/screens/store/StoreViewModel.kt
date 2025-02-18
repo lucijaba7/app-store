@@ -1,14 +1,18 @@
 package com.example.novenaappstore.ui.screens.store
 
+import android.app.PendingIntent
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.os.Environment
 import android.util.Log
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
@@ -118,10 +122,9 @@ class StoreViewModel(
         }
     }
 
-    public fun downloadFile(context: Context, fileUrl: String, appId: String) {
+    // download aok file and save it to downloads
+    fun downloadFile(context: Context, fileUrl: String, appId: String) {
         val service = RetrofitInstance.api
-        // Show loading screen
-        //_downloading.value = true
         _downloadingAppId.value = appId
 
         service.downloadFile(fileUrl).enqueue(object : Callback<ResponseBody> {
@@ -209,6 +212,44 @@ class StoreViewModel(
 
     }
 
+    // Uninstall app
+    fun uninstallApp(context: Context, packageName: String){
+        // Reset home launcher
+        resetToDefaultLauncher(context, packageName)
+
+        val packageInstaller = context.packageManager.packageInstaller
+
+        // Fix: Use FLAG_IMMUTABLE for Android 12+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent("ACTION_UNINSTALL_COMPLETE"),
+            PendingIntent.FLAG_IMMUTABLE  // Fixes crash on Android 12+
+        )
+
+        packageInstaller.uninstall(packageName, pendingIntent.intentSender)
+        Log.d("Uninstall", "Uninstall finished.")
+    }
+
+    public fun onAppUninstalled(packageName: String) {
+        Log.d("StoreViewModel", "Handling uninstalled app: $packageName")
+        // Get the current list of apps
+        _apps.value?.let { appsList ->
+            val updatedApps = appsList.map { appWithState ->
+                if (appWithState.app.packageName == packageName) {
+                    appWithState.copy(state = AppState.NOT_INSTALLED)
+                } else {
+                    appWithState
+                }
+            }
+
+            // Update the LiveData with the updated list
+            _apps.value = updatedApps
+        }
+        removeAppFromWhitelist(context, packageName)
+
+    }
+
     // Listen for the package added event
     fun registerInstallReceiver() {
         val filter = IntentFilter(Intent.ACTION_PACKAGE_ADDED)
@@ -236,6 +277,38 @@ class StoreViewModel(
         }
     }
 
+    fun registerUninstallReceiver() {
+        val filter = IntentFilter("ACTION_UNINSTALL_COMPLETE") // Listen for the custom action
+        ContextCompat.registerReceiver(
+            context,
+            packageUninstallReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    fun unregisterUninstallReceiver() {
+        context.unregisterReceiver(packageUninstallReceiver)
+    }
+
+    // BroadcastReceiver to handle app uninstallation
+    private val packageUninstallReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val packageName =
+                intent?.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME) // Get package name
+
+            if (packageName != null) {
+                Log.d("UninstallReceiver", "App uninstalled: $packageName")
+                Toast.makeText(context, "Uninstalled: $packageName", Toast.LENGTH_SHORT).show()
+
+                // ✅ Update UI
+                onAppUninstalled(packageName)
+            } else {
+                Log.e("UninstallReceiver", "Uninstall failed or package name missing")
+            }
+        }
+    }
+
     // adding installed apps to white list enabling them to enter kiosk mode
 
     fun getWhitelistedApps(context: Context): List<String> {
@@ -257,6 +330,19 @@ class StoreViewModel(
         }
 
         Log.d("Kiosk mode", "App has been added to list.")
+    }
+
+    private fun removeAppFromWhitelist(context: Context, packageName: String) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
+
+        // Get current whitelisted apps
+        val currentApps = dpm.getLockTaskPackages(adminComponent).toMutableList()
+
+        if (currentApps.contains(packageName)) {
+            currentApps.remove(packageName) // Remove app from whitelist
+            dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
+        }
     }
 
     // set installed app as home launcher
@@ -284,6 +370,14 @@ class StoreViewModel(
 
         val activities = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
         return activities.firstOrNull()?.activityInfo?.name
+    }
+
+    fun resetToDefaultLauncher(context: Context, packageName: String) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
+
+        // Remove any preferred home activity
+        dpm.clearPackagePersistentPreferredActivities(adminComponent, packageName)
     }
 
 }
