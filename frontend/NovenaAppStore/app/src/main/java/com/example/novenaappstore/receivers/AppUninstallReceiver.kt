@@ -14,6 +14,8 @@ class AppUninstallReceiver : BroadcastReceiver(){
 
             // Remove the app from the kiosk whitelist
             removeAppFromWhitelist(context, packageName)
+            // Reset home launcher
+            resetToDefaultLauncher(context, packageName)
         }
     }
 
@@ -28,5 +30,13 @@ class AppUninstallReceiver : BroadcastReceiver(){
             currentApps.remove(packageName) // Remove app from whitelist
             dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
         }
+    }
+
+    fun resetToDefaultLauncher(context: Context, packageName: String) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
+
+        // Remove any preferred home activity
+        dpm.clearPackagePersistentPreferredActivities(adminComponent, packageName)
     }
 }

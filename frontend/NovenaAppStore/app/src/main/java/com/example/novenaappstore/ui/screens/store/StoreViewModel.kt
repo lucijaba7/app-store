@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -200,6 +201,12 @@ class StoreViewModel(
         }
 
         addAppToWhitelist(context, packageName)
+
+        val mainActivity = getLauncherActivity(context, packageName)
+        if (mainActivity != null) {
+            setAppAsLauncher(context, packageName, mainActivity)
+        }
+
     }
 
     // Listen for the package added event
@@ -250,6 +257,33 @@ class StoreViewModel(
         }
 
         Log.d("Kiosk mode", "App has been added to list.")
+    }
+
+    // set installed app as home launcher
+    fun setAppAsLauncher(context: Context, packageName: String, mainActivity: String) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
+
+        // Set the installed app as the preferred home activity
+        val intentFilter = IntentFilter(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+
+        val component = ComponentName(packageName, mainActivity)
+
+        dpm.addPersistentPreferredActivity(adminComponent, intentFilter, component)
+    }
+
+    fun getLauncherActivity(context: Context, packageName: String): String? {
+        val pm = context.packageManager
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            setPackage(packageName)
+        }
+
+        val activities = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+        return activities.firstOrNull()?.activityInfo?.name
     }
 
 }
