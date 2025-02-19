@@ -4,14 +4,14 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 
-class PackageUninstallReceiver(private val callback: (String) -> Unit) : BroadcastReceiver() {
+class AppUninstallReceiver(private val callback: (String) -> Unit) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
-        Log.d("PackageUninstallReceiver", "onReceive triggered")
-        if (intent?.action == "ACTION_UNINSTALL_COMPLETE") {
+        Log.d("PackageInstallReceiver", "onReceive triggered")
+        if (intent?.action == Intent.ACTION_PACKAGE_REMOVED) {
             val packageName = intent.data?.schemeSpecificPart
             packageName?.let {
-                Log.d("PackageUninstallReceiver", "Uninstalled: $it")
-                callback(it)  // Notify the activity or view model
+                Log.d("PackageInstallReceiver", "Installed: $it")
+                callback(it)  // Notify MainActivity
             }
         }
     }

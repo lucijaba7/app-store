@@ -25,6 +25,7 @@ import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
 import com.example.novenaappstore.data.remote.RetrofitInstance
 import com.example.novenaappstore.data.repository.AppRepository
+import com.example.novenaappstore.receivers.AppUninstallReceiver
 import com.example.novenaappstore.receivers.MyDeviceAdminReceiver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -278,13 +279,14 @@ class StoreViewModel(
     }
 
     fun registerUninstallReceiver() {
-        val filter = IntentFilter("ACTION_UNINSTALL_COMPLETE") // Listen for the custom action
-        ContextCompat.registerReceiver(
-            context,
-            packageUninstallReceiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        val receiver = AppUninstallReceiver { packageName ->
+
+            onAppUninstalled(packageName)  // Call your function
+        }
+        val intentFilter = IntentFilter(Intent.ACTION_PACKAGE_REMOVED).apply {
+            addDataScheme("package")
+        }
+        context.registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
     }
 
     fun unregisterUninstallReceiver() {
@@ -301,7 +303,7 @@ class StoreViewModel(
                 Log.d("UninstallReceiver", "App uninstalled: $packageName")
                 Toast.makeText(context, "Uninstalled: $packageName", Toast.LENGTH_SHORT).show()
 
-                // ✅ Update UI
+                //  Update UI
                 onAppUninstalled(packageName)
             } else {
                 Log.e("UninstallReceiver", "Uninstall failed or package name missing")

@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
+import com.example.novenaappstore.receivers.AppUninstallReceiver
 import com.example.novenaappstore.ui.theme.PoppinsFontFamily
 
 
@@ -71,7 +72,6 @@ fun StoreScreen(viewModel: StoreViewModel) {
         viewModel.fetchApps()
         viewModel.registerInstallReceiver()
         viewModel.registerUninstallReceiver()
-
     }
 
     // Unregister the receiver when the composable is disposed of
