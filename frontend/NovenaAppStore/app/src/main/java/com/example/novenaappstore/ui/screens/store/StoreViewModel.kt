@@ -54,12 +54,25 @@ class StoreViewModel(
     private val _downloadingAppId = MutableLiveData<String?>(null)
     val downloadingAppId: LiveData<String?> = _downloadingAppId
 
+    private val _savingAppId = MutableLiveData<String?>(null)
+    val savingAppId: LiveData<String?> = _savingAppId
+
+    // LiveData to track if ANY app is downloading
+    val isAnySaving = MediatorLiveData<Boolean>().apply {
+        addSource(_savingAppId) { appId ->
+            value = appId != null  // True if an app is downloading, False if null
+        }
+    }
+
     // LiveData to track if ANY app is downloading
     val isAnyDownloading = MediatorLiveData<Boolean>().apply {
         addSource(_downloadingAppId) { appId ->
             value = appId != null  // True if an app is downloading, False if null
         }
     }
+
+    private val _downloadProgress = MutableLiveData(0)
+    val downloadProgress: LiveData<Int> = _downloadProgress
 
     fun clearError() {
         _error.value = null
@@ -122,25 +135,38 @@ class StoreViewModel(
     fun downloadFile(context: Context, fileUrl: String, appId: String) {
         val service = RetrofitInstance.api
         _downloadingAppId.value = appId
+        _downloadProgress.value = 0  // Initialize progress
 
         service.downloadFile(fileUrl).enqueue(object : Callback<ResponseBody> {
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                 if (response.isSuccessful) {
                     response.body()?.let { body ->
                         viewModelScope.launch(Dispatchers.IO) {
+                            // Switch to saving progress on the main thread
+                            withContext(Dispatchers.Main) {
+                                _downloadingAppId.value = null
+                                _savingAppId.value = appId
+                            }
+
+                            // Perform file saving operation in background
                             saveFile(context, body, fileUrl)
+
+                            // After saving completes, reset UI state on main thread
+                            withContext(Dispatchers.Main) {
+                                _savingAppId.value = null
+                                _downloadingAppId.value = appId
+                            }
                         }
                     }
                 } else {
                     Log.e("Download", "Failed: ${response.errorBody()?.string()}")
-                    _downloadingAppId.value = null
+                    viewModelScope.launch { _downloadingAppId.value = null }
                 }
             }
 
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                 Log.e("Download", "Error: ${t.message}")
-                //_downloading.value = false // Hide loading screen on failure
-                _downloadingAppId.value = null
+                viewModelScope.launch { _downloadingAppId.value = null }
             }
         })
     }
@@ -152,13 +178,27 @@ class StoreViewModel(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/$fileName"
             val file = File(filePath)
 
+            val totalBytes = body.contentLength()
+            var bytesReadSoFar = 0L
+
             body.byteStream().use { inputStream ->
                 FileOutputStream(file).use { outputStream ->
                     val buffer = ByteArray(4096)
                     var bytesRead: Int
+                    var lastProgress = 0 // Track the last progress to reduce unnecessary UI updates
 
                     while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                         outputStream.write(buffer, 0, bytesRead)
+                        bytesReadSoFar += bytesRead
+
+                        if (totalBytes > 0) {
+                            val progress = ((bytesReadSoFar.toFloat() / totalBytes) * 100).toInt()
+                            if (progress != lastProgress) { // Only update when progress changes
+                                _downloadProgress.postValue(progress)
+                                lastProgress = progress
+                                Log.d("Download", "Progress: $progress%")
+                            }
+                        }
                     }
 
                     outputStream.flush()
@@ -169,11 +209,13 @@ class StoreViewModel(
             // Switch back to the main thread to update UI
             withContext(Dispatchers.Main) {
                 installApk(context, fileName) // Start installation
+                _downloadProgress.value = 0
             }
         } catch (e: IOException) {
             Log.e("Download", "File save error: ${e.message}")
             withContext(Dispatchers.Main) {
-                _downloadingAppId.value = null
+                _savingAppId.value = null
+                _downloadProgress.value = 0
             }
         }
     }

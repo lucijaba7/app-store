@@ -134,6 +134,10 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
     val downloadingAppId by viewModel.downloadingAppId.observeAsState()
     val isAnyDownloading by viewModel.isAnyDownloading.observeAsState(false)
     val isDownloading = downloadingAppId == appWithState.app.id.toString() // Is this app downloading
+    val savingAppId by viewModel.savingAppId.observeAsState()
+    val isAnySaving by viewModel.isAnySaving.observeAsState(false)
+    val isSaving = savingAppId == appWithState.app.id.toString() // Is this app downloading
+    val downloadProgress by viewModel.downloadProgress.observeAsState(0)
 
     Card(
         modifier = Modifier
@@ -217,15 +221,34 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                     .height(25.dp),
                 contentPadding = PaddingValues(horizontal = 10.dp),
 
-                enabled = !isAnyDownloading // Disable ALL buttons if any download is in progress
+                enabled = !(isAnyDownloading || isAnySaving) // Disable ALL buttons if any download is in progress
 
             ) {
-                if (isDownloading) {
+                if (isDownloading){
                     CircularProgressIndicator(
                         color = Color.White,
                         modifier = Modifier.size(15.dp),
                         strokeWidth = 2.dp
                     )
+                }
+                else if (isSaving) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically, // Align items to the center vertically
+                        horizontalArrangement = Arrangement.spacedBy(5.dp) // Add spacing between items
+                    ) {
+                        CircularProgressIndicator(
+                            progress = (downloadProgress / 100f).coerceIn(0f, 1f),
+                            color = Color.White,
+                            modifier = Modifier.size(15.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Text(
+                            text = "${downloadProgress}%",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 } else {
                     Text(
                         text = when (appWithState.state) {
