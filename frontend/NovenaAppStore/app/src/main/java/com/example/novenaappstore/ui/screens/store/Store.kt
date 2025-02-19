@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
-import com.example.novenaappstore.receivers.AppUninstallReceiver
 import com.example.novenaappstore.ui.theme.PoppinsFontFamily
 
 
@@ -88,6 +87,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
         onDismiss = { viewModel.clearError(); openAlertDialog.value = false })
 
 
+    // Refresh
     SimpleInversePullRefresh(viewModel) {
         error?.let {
             openAlertDialog.value = true
@@ -107,6 +107,7 @@ fun StoreScreen(viewModel: StoreViewModel) {
 
     }
 
+    // Logout
     Box(modifier = Modifier.fillMaxSize()) {
         FloatingActionButton(
             onClick = {
@@ -212,9 +213,9 @@ fun AppItem(appWithState: AppWithState, viewModel: StoreViewModel) {
                     }
                 },
                 modifier = Modifier
-                    .wrapContentSize()  // Ensures it doesn't take extra space
-                    .height(25.dp), // Force a small height
-                contentPadding = PaddingValues(horizontal = 10.dp), // Minimal padding
+                    .wrapContentSize()
+                    .height(25.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp),
 
                 enabled = !isAnyDownloading // Disable ALL buttons if any download is in progress
 

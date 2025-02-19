@@ -12,14 +12,12 @@ import android.content.pm.PackageManager
 import android.os.Environment
 import android.util.Log
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import com.example.novenaappstore.ApkInstaller
 import com.example.novenaappstore.data.auth.AuthManager
 import com.example.novenaappstore.data.model.AppState
 import com.example.novenaappstore.data.model.AppWithState
@@ -52,9 +50,6 @@ class StoreViewModel(
 
     private val _error = MutableLiveData<String?>(null) // Holds any error message
     val error: LiveData<String?> get() = _error
-
-//    private val _downloading = MutableLiveData(false) // Download loading
-//    val downloading: LiveData<Boolean> get() = _downloading
 
     private val _downloadingAppId = MutableLiveData<String?>(null)
     val downloadingAppId: LiveData<String?> = _downloadingAppId
@@ -123,7 +118,7 @@ class StoreViewModel(
         }
     }
 
-    // download aok file and save it to downloads
+    // region Download apk file, save it to downloads and start silent installation
     fun downloadFile(context: Context, fileUrl: String, appId: String) {
         val service = RetrofitInstance.api
         _downloadingAppId.value = appId
@@ -138,7 +133,6 @@ class StoreViewModel(
                     }
                 } else {
                     Log.e("Download", "Failed: ${response.errorBody()?.string()}")
-                    //_downloading.value = false // Hide loading screen on failure
                     _downloadingAppId.value = null
                 }
             }
@@ -174,83 +168,59 @@ class StoreViewModel(
 
             // Switch back to the main thread to update UI
             withContext(Dispatchers.Main) {
-                ApkInstaller.installApk(context, fileName) // Start installation
+                installApk(context, fileName) // Start installation
             }
         } catch (e: IOException) {
             Log.e("Download", "File save error: ${e.message}")
             withContext(Dispatchers.Main) {
-                //_downloading.value = false
                 _downloadingAppId.value = null
             }
         }
     }
 
-    fun onAppInstalled(packageName: String) {
-        Log.d("StoreViewModel", "Handling installed app: $packageName")
-        // Get the current list of apps
-        _apps.value?.let { appsList ->
-            // Find the app that was installed
-            val updatedApps = appsList.map { appWithState ->
-                if (appWithState.app.packageName == packageName) {
-                    // Update the state of this app to UP_TO_DATE
-                    appWithState.copy(state = AppState.UP_TO_DATE)
-                } else {
-                    appWithState
-                }
+    private fun installApk(context: Context, fileName: String) {
+
+        try {
+            val file = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                fileName
+            )
+
+            if (!file.exists()) {
+                Log.e("ApkInstaller", "APK file not found!")
+                return
             }
 
-            // Update the LiveData with the updated list
-            _apps.value = updatedApps
-            _downloadingAppId.value = null
+            val packageInstaller = context.packageManager.packageInstaller
+            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+            val sessionId = packageInstaller.createSession(params)
+            val session = packageInstaller.openSession(sessionId)
+
+            val inputStream = file.inputStream()
+            val outputStream = session.openWrite("package_install", 0, -1)
+
+            inputStream.copyTo(outputStream)
+            session.fsync(outputStream)
+            outputStream.close()
+            inputStream.close()
+
+            // Commit the session to install the APK
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                sessionId,
+                Intent(Intent.ACTION_INSTALL_PACKAGE),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            session.commit(pendingIntent.intentSender)
+
+        } catch (e: Exception) {
+            Log.e("ApkInstaller", "Installation failed: ${e.message}")
         }
-
-        addAppToWhitelist(context, packageName)
-
-        val mainActivity = getLauncherActivity(context, packageName)
-        if (mainActivity != null) {
-            setAppAsLauncher(context, packageName, mainActivity)
-        }
-
     }
+    //endregion
 
-    // Uninstall app
-    fun uninstallApp(context: Context, packageName: String){
-        // Reset home launcher
-        resetToDefaultLauncher(context, packageName)
-
-        val packageInstaller = context.packageManager.packageInstaller
-
-        // Fix: Use FLAG_IMMUTABLE for Android 12+
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            0,
-            Intent("ACTION_UNINSTALL_COMPLETE"),
-            PendingIntent.FLAG_IMMUTABLE  // Fixes crash on Android 12+
-        )
-
-        packageInstaller.uninstall(packageName, pendingIntent.intentSender)
-        Log.d("Uninstall", "Uninstall finished.")
-    }
-
-    public fun onAppUninstalled(packageName: String) {
-        Log.d("StoreViewModel", "Handling uninstalled app: $packageName")
-        // Get the current list of apps
-        _apps.value?.let { appsList ->
-            val updatedApps = appsList.map { appWithState ->
-                if (appWithState.app.packageName == packageName) {
-                    appWithState.copy(state = AppState.NOT_INSTALLED)
-                } else {
-                    appWithState
-                }
-            }
-
-            // Update the LiveData with the updated list
-            _apps.value = updatedApps
-        }
-        removeAppFromWhitelist(context, packageName)
-
-    }
-
+    //region Successful installation receiver
     // Listen for the package added event
     fun registerInstallReceiver() {
         val filter = IntentFilter(Intent.ACTION_PACKAGE_ADDED)
@@ -278,6 +248,76 @@ class StoreViewModel(
         }
     }
 
+    // Trigger after successful installation to update UI
+    fun onAppInstalled(packageName: String) {
+        Log.d("StoreViewModel", "Handling installed app: $packageName")
+        // Get the current list of apps
+        _apps.value?.let { appsList ->
+            // Find the app that was installed
+            val updatedApps = appsList.map { appWithState ->
+                if (appWithState.app.packageName == packageName) {
+                    // Update the state of this app to UP_TO_DATE
+                    appWithState.copy(state = AppState.UP_TO_DATE)
+                } else {
+                    appWithState
+                }
+            }
+
+            // Update the LiveData with the updated list
+            _apps.value = updatedApps
+            _downloadingAppId.value = null
+        }
+
+        addAppToWhitelist(context, packageName)
+
+        val mainActivity = getLauncherActivity(context, packageName)
+        if (mainActivity != null) {
+            setAppAsLauncher(context, packageName, mainActivity)
+        }
+
+    }
+    //endregion
+
+    //region Uninstall app
+    // Silently uninstall app
+    fun uninstallApp(context: Context, packageName: String){
+        // Reset home launcher
+        resetToDefaultLauncher(context, packageName)
+
+        val packageInstaller = context.packageManager.packageInstaller
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent("ACTION_UNINSTALL_COMPLETE"),
+            PendingIntent.FLAG_IMMUTABLE  // Fixes crash on Android 12+
+        )
+
+        packageInstaller.uninstall(packageName, pendingIntent.intentSender)
+        Log.d("Uninstall", "Uninstall finished.")
+    }
+
+    // Trigger after successful uninstallation to update UI
+    fun onAppUninstalled(packageName: String) {
+        Log.d("StoreViewModel", "Handling uninstalled app: $packageName")
+        // Get the current list of apps
+        _apps.value?.let { appsList ->
+            val updatedApps = appsList.map { appWithState ->
+                if (appWithState.app.packageName == packageName) {
+                    appWithState.copy(state = AppState.NOT_INSTALLED)
+                } else {
+                    appWithState
+                }
+            }
+
+            // Update the LiveData with the updated list
+            _apps.value = updatedApps
+        }
+        removeAppFromWhitelist(context, packageName)
+
+    }
+
+    // Listen for the package removed event
     fun registerUninstallReceiver() {
         val receiver = AppUninstallReceiver { packageName ->
 
@@ -286,9 +326,10 @@ class StoreViewModel(
         val intentFilter = IntentFilter(Intent.ACTION_PACKAGE_REMOVED).apply {
             addDataScheme("package")
         }
-        context.registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+        context.registerReceiver(receiver, intentFilter)
     }
 
+    // Unregister the receiver when it's no longer needed
     fun unregisterUninstallReceiver() {
         context.unregisterReceiver(packageUninstallReceiver)
     }
@@ -310,30 +351,30 @@ class StoreViewModel(
             }
         }
     }
+    //endregion
 
-    // adding installed apps to white list enabling them to enter kiosk mode
-
+    //region Enable kiosk mode to installed apps
+    // Get current whitelisted apps
     fun getWhitelistedApps(context: Context): List<String> {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
         return dpm.getLockTaskPackages(adminComponent).toList()
     }
 
+    // Adding installed apps to white list enabling them to enter kiosk mode
     fun addAppToWhitelist(context: Context, packageName: String) {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
 
-        // Get current whitelisted apps
         val currentApps = getWhitelistedApps(context).toMutableList()
 
         if (!currentApps.contains(packageName)) {
             currentApps.add(packageName) // Add new app
             dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
         }
-
-        Log.d("Kiosk mode", "App has been added to list.")
     }
 
+    // Remove app from white list after uninstallation
     private fun removeAppFromWhitelist(context: Context, packageName: String) {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
@@ -346,8 +387,10 @@ class StoreViewModel(
             dpm.setLockTaskPackages(adminComponent, currentApps.toTypedArray()) // Update whitelist
         }
     }
+    //endregion
 
-    // set installed app as home launcher
+    //region Set/remove app as home launcher
+    // Set installed app as home launcher
     fun setAppAsLauncher(context: Context, packageName: String, mainActivity: String) {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
@@ -363,6 +406,7 @@ class StoreViewModel(
         dpm.addPersistentPreferredActivity(adminComponent, intentFilter, component)
     }
 
+    // Check if it's set as home launcher
     fun getLauncherActivity(context: Context, packageName: String): String? {
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN).apply {
@@ -374,6 +418,7 @@ class StoreViewModel(
         return activities.firstOrNull()?.activityInfo?.name
     }
 
+    // Remove app as home launcher and set default one
     fun resetToDefaultLauncher(context: Context, packageName: String) {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(context, MyDeviceAdminReceiver::class.java)
@@ -381,5 +426,6 @@ class StoreViewModel(
         // Remove any preferred home activity
         dpm.clearPackagePersistentPreferredActivities(adminComponent, packageName)
     }
+    //endregion
 
 }
